@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useSyncedState } from "../lib/useSyncedState";
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const THIS_MONTH = TODAY.slice(0, 7);
@@ -79,23 +80,98 @@ const monthlyTasks = [
   { id: "mt12", emoji: "🌬️", label: "Clean out dryer lint trap & hose" },
 ];
 
-const lsGet = (key, fallback) => { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; } };
-const lsSet = (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} };
-
 const getLevel = (xp) => LEVELS.findLast(l => xp >= l.min) || LEVELS[0];
 
+// The whole tool lives in one synced Firestore doc. The daily/sweep/zone maps
+// carry the date they belong to (so we can roll them over at midnight) and
+// monthly carries its month; history/xp/badges/totalMonthly accumulate.
+const DEFAULT_STATE = {
+  daily:   { date: TODAY,       checked: {} },
+  sweeps:  { date: TODAY,       checked: {} },
+  zones:   { date: TODAY,       checked: {} },
+  monthly: { month: THIS_MONTH, checked: {} },
+  history: {},
+  xp: 0,
+  badges: [],
+  totalMonthly: 0,
+};
+
+// Badge stats derived purely from a progress snapshot.
+const computeStats = (history, totalMonthly, xp) => {
+  const days = Object.keys(history);
+  const totalZones = days.filter(d => history[d]?.zone).length;
+  const maxSweepsDay = Math.max(0, ...days.map(d => history[d]?.sweeps || 0));
+  const zonesUnlocked = new Set(days.map(d => history[d]?.zone).filter(Boolean)).size;
+  const fullDailyDays = days.filter(d => history[d]?.allDaily).length;
+  let streak = 0;
+  const today = new Date();
+  for (let i = 0; i < 60; i++) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    if (history[key]?.zone || history[key]?.sweeps > 0 || history[key]?.allDaily) streak++;
+    else break;
+  }
+  return { totalZones, totalMonthly, maxSweepsDay, zonesUnlocked, fullDailyDays, streak, xp };
+};
+
+// Rebuild today's history entry from the current check maps.
+const buildHistory = (history, dc, sc, zc) => {
+  const sweepCount = miniSweeps.filter(s => sc[s.id]).length;
+  const completedZone = zones.find(z => z.tasks.every((_, i) => zc[`${z.id}-${i}`]));
+  const allDaily = dailyHabits.every(h => dc[h.id]);
+  const prev = history[TODAY] || {};
+  return { ...history, [TODAY]: { zone: completedZone?.id || prev.zone || null, sweeps: sweepCount, allDaily } };
+};
+
+// Add XP to a snapshot; returns the next snapshot plus any level-up / badge to surface.
+const grantXp = (state, amount, history) => {
+  const oldLevel = getLevel(state.xp);
+  const newXp = state.xp + amount;
+  const newLvl = getLevel(newXp);
+  const stats = computeStats(history, state.totalMonthly || 0, newXp);
+  const badges = [...state.badges];
+  let badgeUnlocked = null;
+  BADGES.forEach(b => {
+    if (!badges.includes(b.id) && b.check(stats)) { badges.push(b.id); badgeUnlocked = b; }
+  });
+  return {
+    state: { ...state, xp: newXp, badges, history },
+    leveledTo: newLvl.name !== oldLevel.name ? newLvl : null,
+    badgeUnlocked,
+  };
+};
+
 export default function Cleaning() {
+  const [s, setS, status] = useSyncedState("cleaning", DEFAULT_STATE);
   const [tab, setTab] = useState("home");
   const [activeZone, setActiveZone] = useState(null);
-  const [dailyChecked, setDailyChecked] = useState(() => lsGet("daily-" + TODAY, {}));
-  const [sweepChecked, setSweepChecked] = useState(() => lsGet("sweeps-" + TODAY, {}));
-  const [zoneChecked, setZoneChecked] = useState(() => lsGet("zones-" + TODAY, {}));
-  const [monthlyChecked, setMonthlyChecked] = useState(() => lsGet("monthly-" + THIS_MONTH, {}));
-  const [history, setHistory] = useState(() => lsGet("cleaning-history", {}));
-  const [xp, setXp] = useState(() => lsGet("cleaning-xp", 0));
-  const [badges, setBadges] = useState(() => lsGet("cleaning-badges", []));
   const [newBadge, setNewBadge] = useState(null);
   const [newLevel, setNewLevel] = useState(null);
+
+  // Roll the daily/sweep/zone maps over at midnight, monthly at month start.
+  useEffect(() => {
+    const stale =
+      s.daily.date !== TODAY || s.sweeps.date !== TODAY ||
+      s.zones.date !== TODAY || s.monthly.month !== THIS_MONTH;
+    if (!stale) return;
+    setS((prev) => ({
+      ...prev,
+      daily:   prev.daily.date  === TODAY        ? prev.daily   : { date: TODAY, checked: {} },
+      sweeps:  prev.sweeps.date === TODAY        ? prev.sweeps  : { date: TODAY, checked: {} },
+      zones:   prev.zones.date  === TODAY        ? prev.zones   : { date: TODAY, checked: {} },
+      monthly: prev.monthly.month === THIS_MONTH ? prev.monthly : { month: THIS_MONTH, checked: {} },
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.daily.date, s.sweeps.date, s.zones.date, s.monthly.month]);
+
+  // Read the synced doc through the names the view code already uses.
+  const dailyChecked = s.daily.checked;
+  const sweepChecked = s.sweeps.checked;
+  const zoneChecked = s.zones.checked;
+  const monthlyChecked = s.monthly.checked;
+  const history = s.history;
+  const xp = s.xp;
+  const badges = s.badges;
 
   const sweepDone = miniSweeps.filter(s => sweepChecked[s.id]).length;
   const currentZone = zones.find(z => z.id === activeZone);
@@ -107,113 +183,72 @@ export default function Cleaning() {
   const xpNeeded = (nextLevel ? nextLevel.min : level.max + 1) - level.min;
   const progress = Math.min(100, Math.round((xpInLevel / xpNeeded) * 100));
 
-  // compute stats for badges
-  const computeStats = (hist, currentXp) => {
-    const days = Object.keys(hist);
-    const totalZones = days.filter(d => hist[d]?.zone).length;
-    const totalMonthly = lsGet("cleaning-totalmonthly", 0);
-    const maxSweepsDay = Math.max(0, ...days.map(d => hist[d]?.sweeps || 0));
-    const zonesUnlocked = new Set(days.map(d => hist[d]?.zone).filter(Boolean)).size;
-    const fullDailyDays = days.filter(d => hist[d]?.allDaily).length;
-    // streak
-    let streak = 0;
-    const today = new Date();
-    for (let i = 0; i < 60; i++) {
-      const d = new Date(today); d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      if (hist[key]?.zone || hist[key]?.sweeps > 0 || hist[key]?.allDaily) streak++;
-      else break;
-    }
-    return { totalZones, totalMonthly, maxSweepsDay, zonesUnlocked, fullDailyDays, streak, xp: currentXp };
-  };
-
-  const addXp = (amount, currentXp, hist) => {
-    const oldLevel = getLevel(currentXp);
-    const newXp = currentXp + amount;
-    const newLvl = getLevel(newXp);
-    lsSet("cleaning-xp", newXp);
-    setXp(newXp);
-    if (newLvl.name !== oldLevel.name) setNewLevel(newLvl);
-
-    // check badges
-    const stats = computeStats(hist, newXp);
-    const earned = lsGet("cleaning-badges", []);
-    BADGES.forEach(b => {
-      if (!earned.includes(b.id) && b.check(stats)) {
-        earned.push(b.id);
-        setNewBadge(b);
-      }
-    });
-    lsSet("cleaning-badges", earned);
-    setBadges(earned);
-    return newXp;
-  };
-
-  const updateHistory = (dc, sc, zc) => {
-    const sweepCount = miniSweeps.filter(s => sc[s.id]).length;
-    const completedZone = zones.find(z => z.tasks.every((_, i) => zc[`${z.id}-${i}`]));
-    const allDaily = dailyHabits.every(h => dc[h.id]);
-    const prev = history[TODAY] || {};
-    const updated = { ...history, [TODAY]: { zone: completedZone?.id || prev.zone || null, sweeps: sweepCount, allDaily } };
-    setHistory(updated);
-    lsSet("cleaning-history", updated);
-    return updated;
-  };
-
   const toggleDaily = (id) => {
-    const prev = dailyChecked[id];
-    const next = { ...dailyChecked, [id]: !prev };
-    setDailyChecked(next);
-    lsSet("daily-" + TODAY, next);
-    if (!prev) {
-      const hist = updateHistory(next, sweepChecked, zoneChecked);
-      const newXp = addXp(XP_VALUES.daily, xp, hist);
-      if (dailyHabits.every(h => next[h.id])) addXp(15, newXp, hist); // bonus for all 3
+    const checked = { ...dailyChecked, [id]: !dailyChecked[id] };
+    if (dailyChecked[id]) { setS({ ...s, daily: { ...s.daily, checked } }); return; }
+    const hist = buildHistory(history, checked, sweepChecked, zoneChecked);
+    let next = { ...s, daily: { ...s.daily, checked } };
+    let leveled = null, badge = null;
+    let r = grantXp(next, XP_VALUES.daily, hist); next = r.state;
+    if (r.leveledTo) leveled = r.leveledTo;
+    if (r.badgeUnlocked) badge = r.badgeUnlocked;
+    if (dailyHabits.every(h => checked[h.id])) { // bonus for all 3
+      r = grantXp(next, 15, hist); next = r.state;
+      if (r.leveledTo) leveled = r.leveledTo;
+      if (r.badgeUnlocked) badge = r.badgeUnlocked;
     }
+    setS(next);
+    if (leveled) setNewLevel(leveled);
+    if (badge) setNewBadge(badge);
   };
 
   const toggleSweep = (id) => {
-    const prev = sweepChecked[id];
-    const next = { ...sweepChecked, [id]: !prev };
-    setSweepChecked(next);
-    lsSet("sweeps-" + TODAY, next);
-    if (!prev) { const hist = updateHistory(dailyChecked, next, zoneChecked); addXp(XP_VALUES.sweep, xp, hist); }
+    const checked = { ...sweepChecked, [id]: !sweepChecked[id] };
+    if (sweepChecked[id]) { setS({ ...s, sweeps: { ...s.sweeps, checked } }); return; }
+    const hist = buildHistory(history, dailyChecked, checked, zoneChecked);
+    const r = grantXp({ ...s, sweeps: { ...s.sweeps, checked } }, XP_VALUES.sweep, hist);
+    setS(r.state);
+    if (r.leveledTo) setNewLevel(r.leveledTo);
+    if (r.badgeUnlocked) setNewBadge(r.badgeUnlocked);
   };
 
   const toggleZone = (zId, i) => {
     const key = `${zId}-${i}`;
-    const prev = zoneChecked[key];
-    const next = { ...zoneChecked, [key]: !prev };
-    setZoneChecked(next);
-    lsSet("zones-" + TODAY, next);
+    const checked = { ...zoneChecked, [key]: !zoneChecked[key] };
+    if (zoneChecked[key]) { setS({ ...s, zones: { ...s.zones, checked } }); return; }
     const zone = zones.find(z => z.id === zId);
-    if (!prev) {
-      // XP for individual task
-      let earned = addXp(XP_VALUES.zoneTask, xp, history);
-      // bonus if zone is now complete
-      if (zone?.tasks.every((_, idx) => next[`${zId}-${idx}`])) {
-        const hist = updateHistory(dailyChecked, sweepChecked, next);
-        addXp(XP_VALUES.zoneBonus, earned, hist);
-      }
+    const hist = buildHistory(history, dailyChecked, sweepChecked, checked);
+    let next = { ...s, zones: { ...s.zones, checked } };
+    let leveled = null, badge = null;
+    let r = grantXp(next, XP_VALUES.zoneTask, hist); next = r.state; // XP for the task
+    if (r.leveledTo) leveled = r.leveledTo;
+    if (r.badgeUnlocked) badge = r.badgeUnlocked;
+    if (zone?.tasks.every((_, idx) => checked[`${zId}-${idx}`])) { // bonus on completion
+      r = grantXp(next, XP_VALUES.zoneBonus, hist); next = r.state;
+      if (r.leveledTo) leveled = r.leveledTo;
+      if (r.badgeUnlocked) badge = r.badgeUnlocked;
     }
+    setS(next);
+    if (leveled) setNewLevel(leveled);
+    if (badge) setNewBadge(badge);
   };
 
   const toggleMonthly = (id) => {
-    const prev = monthlyChecked[id];
-    const next = { ...monthlyChecked, [id]: !prev };
-    setMonthlyChecked(next);
-    lsSet("monthly-" + THIS_MONTH, next);
-    if (!prev) {
-      const total = lsGet("cleaning-totalmonthly", 0) + 1;
-      lsSet("cleaning-totalmonthly", total);
-      addXp(XP_VALUES.monthly, xp, history);
-    }
+    const checked = { ...monthlyChecked, [id]: !monthlyChecked[id] };
+    if (monthlyChecked[id]) { setS({ ...s, monthly: { ...s.monthly, checked } }); return; }
+    const next = { ...s, monthly: { ...s.monthly, checked }, totalMonthly: (s.totalMonthly || 0) + 1 };
+    const r = grantXp(next, XP_VALUES.monthly, history);
+    setS(r.state);
+    if (r.leveledTo) setNewLevel(r.leveledTo);
+    if (r.badgeUnlocked) setNewBadge(r.badgeUnlocked);
   };
 
-  const resetToday = () => {
-    setDailyChecked({}); setSweepChecked({}); setZoneChecked({});
-    lsSet("daily-" + TODAY, {}); lsSet("sweeps-" + TODAY, {}); lsSet("zones-" + TODAY, {});
-  };
+  const resetToday = () => setS((prev) => ({
+    ...prev,
+    daily:  { date: TODAY, checked: {} },
+    sweeps: { date: TODAY, checked: {} },
+    zones:  { date: TODAY, checked: {} },
+  }));
 
   const [rolledZone, setRolledZone] = useState(null);
   const [rolledSweep, setRolledSweep] = useState(null);
@@ -275,6 +310,16 @@ export default function Cleaning() {
         fontSize: 12, padding: "6px 12px", borderRadius: 999,
         border: "1px solid #7b5ea7", fontFamily: "Georgia, serif",
       }}>← Hearth</Link>
+
+      {/* Sync status */}
+      <div style={{
+        position: "fixed", top: 12, right: 12, zIndex: 50, fontSize: 11,
+        padding: "5px 11px", borderRadius: 999, fontFamily: "Georgia, serif",
+        background: "rgba(45,31,61,0.85)", border: "1px solid #7b5ea7",
+        color: status === "offline" ? "#f0b8b8" : "#c9a9ff",
+      }}>
+        {status === "ready" ? "✓ synced" : status === "offline" ? "● on device" : "⋯ syncing"}
+      </div>
 
       {/* Badge popup */}
       {(newBadge || newLevel) && (
