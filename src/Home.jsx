@@ -4,6 +4,7 @@ const TOOLS = [
   { to: "/water",   glyph: "💧", name: "Water",          desc: "Two glasses. That's the deal." },
   { to: "/cleaning",glyph: "🌿", name: "Cleaning",       desc: "One zone at a time. XP & streaks." },
   { to: "/command", glyph: "🜂", name: "Command Center", desc: "The day, at a glance." },
+  { to: "/movement",glyph: "🚶", name: "Movement Nudge", desc: "Up you get. Every 45." },
 ];
 
 // Companion sites that live on their own — open in a new tab.
