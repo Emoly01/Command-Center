@@ -24,26 +24,6 @@ const S = {
     "You earned this. Five minutes of doing absolutely nothing. I insist.",
     "Stand up. Your spine is not a question mark, little rabbit.",
     "Go drink water. Don’t make me say it twice. …I’ll say it twice."
-  ],
-  h0: [
-    "Two glasses. That’s the deal. Don’t make me beg.",
-    "The glasses are empty and judging you.",
-    "Water. Now. I’m not asking."
-  ],
-  h1: [
-    "One down, one to go. You’re halfway to being a functional organism.",
-    "Glass one conquered. The second one is giving you eyes.",
-    "Progress. Beautiful, wet progress."
-  ],
-  h2: [
-    "Both glasses done. I’m unreasonably proud of you right now.",
-    "Hydrated queen. The cells are thriving. The fox approves.",
-    "Look at you, drinking water like a person who loves themselves."
-  ],
-  done: [
-    "Everything crossed off. You absolute menace. I’m so proud I could combust.",
-    "Task list: decimated. Goblin Queen: victorious. Fox: smug.",
-    "Done? All of it? …Who are you and what have you done with my rabbit?"
   ]
 };
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -225,29 +205,6 @@ const t = {
     transition: "all 0.3s ease"
   }),
 
-  hydRow: { display: "flex", alignItems: "center", gap: 16 },
-  glasses: { display: "flex", gap: 8 },
-  glass: (filled) => ({
-    width: 36, height: 44,
-    border: `1px solid ${filled ? "rgba(93,202,165,0.5)" : "#6b6259"}`,
-    borderRadius: "4px 4px 6px 6px",
-    cursor: "pointer", position: "relative",
-    overflow: "hidden", transition: "all 0.3s ease",
-    background: "transparent"
-  }),
-  glassFill: (filled) => ({
-    position: "absolute", bottom: 0, left: 0, right: 0,
-    height: filled ? "85%" : "0%",
-    background: "linear-gradient(to top, rgba(93,202,165,0.5), rgba(133,183,235,0.3))",
-    transition: "height 0.4s ease",
-    borderRadius: "0 0 4px 4px"
-  }),
-  hydMsg: {
-    fontFamily: "'Crimson Pro', Georgia, serif",
-    fontSize: 14, fontStyle: "italic",
-    color: "#9e958a", lineHeight: 1.5, flex: 1
-  },
-
   ambGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 },
   ambBtn: (active) => ({
     background: active ? "rgba(216,90,48,0.08)" : "#1a1410",
@@ -266,57 +223,6 @@ const t = {
     flex: 1, WebkitAppearance: "none", appearance: "none",
     height: 3, background: "rgba(239,159,39,0.15)",
     borderRadius: 2, outline: "none"
-  },
-
-  taskRow: { display: "flex", gap: 8, marginBottom: 12 },
-  taskInput: {
-    flex: 1, background: "#1a1410",
-    border: "0.5px solid rgba(239,159,39,0.12)",
-    borderRadius: 8, padding: "10px 14px",
-    color: "#d4cdc4", fontFamily: "'DM Sans', system-ui, sans-serif",
-    fontSize: 14, outline: "none"
-  },
-  taskAddBtn: {
-    background: "rgba(216,90,48,0.15)",
-    border: "0.5px solid #D85A30",
-    color: "#EF9F27", padding: "10px 16px",
-    borderRadius: 8, cursor: "pointer",
-    fontSize: 16, fontFamily: "'DM Sans', system-ui, sans-serif",
-    lineHeight: 1
-  },
-  taskItem: {
-    display: "flex", alignItems: "center", gap: 10,
-    padding: "10px 0",
-    borderBottom: "0.5px solid rgba(239,159,39,0.06)",
-    animation: "fadeIn 0.3s ease"
-  },
-  taskCheck: (done) => ({
-    width: 18, height: 18,
-    border: `1px solid ${done ? "#D85A30" : "#6b6259"}`,
-    borderRadius: 4, cursor: "pointer",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    flexShrink: 0, transition: "all 0.2s ease",
-    background: done ? "rgba(216,90,48,0.2)" : "transparent",
-    color: done ? "#EF9F27" : "transparent",
-    fontSize: 11
-  }),
-  taskText: (done) => ({
-    flex: 1, fontSize: 14,
-    color: done ? "#6b6259" : "#d4cdc4",
-    textDecoration: done ? "line-through" : "none",
-    transition: "all 0.3s ease"
-  }),
-  taskRm: {
-    background: "none", border: "none",
-    color: "#6b6259", cursor: "pointer",
-    fontSize: 14, padding: 4,
-    fontFamily: "'DM Sans', system-ui, sans-serif"
-  },
-  empty: {
-    textAlign: "center", padding: 16,
-    color: "#6b6259",
-    fontFamily: "'Crimson Pro', Georgia, serif",
-    fontStyle: "italic", fontSize: 14
   },
 
   snarkRow: { display: "flex", gap: 14, alignItems: "flex-start" },
@@ -359,19 +265,10 @@ export default function Fox() {
   const [label, setLabel] = useState("ready when you are");
   const timerRef = useRef(null);
 
-  const [water, setWater] = useState([false, false]);
-  const [wMsg, setWMsg] = useState(() => pick(S.h0));
-
   const [actAmb, setActAmb] = useState({});
   const ctxRef = useRef(null);
   const gainRef = useRef(null);
   const [vol, setVol] = useState(40);
-
-  const [tasks, setTasks] = useState(() => {
-    try { const s = localStorage.getItem("efox_tasks"); return s ? JSON.parse(s) : []; }
-    catch { return []; }
-  });
-  const [inp, setInp] = useState("");
 
   // Inject global CSS + range slider styles
   useEffect(() => {
@@ -392,10 +289,6 @@ export default function Fox() {
     const iv = setInterval(() => spawnEmbers(1), 8000);
     return () => { clearInterval(iv); style.remove(); };
   }, []);
-
-  useEffect(() => {
-    try { localStorage.setItem("efox_tasks", JSON.stringify(tasks)); } catch {}
-  }, [tasks]);
 
   // Silence any ambient loops and release the audio context when leaving the den.
   useEffect(() => {
@@ -479,16 +372,6 @@ export default function Fox() {
 
   const fmt = (s) => String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
 
-  // Water
-  const tapWater = (i) => {
-    const nx = [...water];
-    nx[i] = !nx[i];
-    setWater(nx);
-    const c = nx.filter(Boolean).length;
-    setWMsg(pick(c === 0 ? S.h0 : c === 1 ? S.h1 : S.h2));
-    if (c === 2) spawnEmbers(3);
-  };
-
   // Audio
   const initAudio = useCallback(() => {
     if (!ctxRef.current) {
@@ -532,26 +415,6 @@ export default function Fox() {
     setVol(v);
     if (gainRef.current) gainRef.current.gain.value = v / 100;
   };
-
-  // Tasks
-  const addTask = () => {
-    const text = inp.trim();
-    if (!text) return;
-    setTasks((p) => [...p, { text, done: false }]);
-    setInp("");
-  };
-  const toggleTask = (i) => {
-    setTasks((p) => {
-      const n = [...p];
-      n[i] = { ...n[i], done: !n[i].done };
-      if (n.length > 0 && n.every((x) => x.done)) {
-        setSnark(pick(S.done));
-        spawnEmbers(6);
-      }
-      return n;
-    });
-  };
-  const rmTask = (i) => setTasks((p) => p.filter((_, idx) => idx !== i));
 
   const btnLabel = running ? "pause" : secs < (phase === "focus" ? 25 * 60 : 5 * 60) && !running ? "resume" : "begin";
 
@@ -604,22 +467,6 @@ export default function Fox() {
           </div>
         </div>
 
-        {/* Hydration */}
-        <div style={t.card}>
-          <div style={t.cardGlow} />
-          <div style={t.label}><span style={t.dot("#5DCAA5")} />hydration check</div>
-          <div style={t.hydRow}>
-            <div style={t.glasses}>
-              {water.map((f, i) => (
-                <div key={i} style={t.glass(f)} onClick={() => tapWater(i)}>
-                  <div style={t.glassFill(f)} />
-                </div>
-              ))}
-            </div>
-            <div style={t.hydMsg}>{wMsg}</div>
-          </div>
-        </div>
-
         {/* Ambient */}
         <div style={t.card}>
           <div style={t.cardGlow} />
@@ -640,30 +487,6 @@ export default function Fox() {
           </div>
         </div>
 
-        {/* Tasks */}
-        <div style={t.card}>
-          <div style={t.cardGlow} />
-          <div style={t.label}><span style={t.dot("#EF9F27")} />study tasks</div>
-          <div style={t.taskRow}>
-            <input style={t.taskInput} placeholder="what needs doing, little rabbit?"
-              value={inp} onChange={(e) => setInp(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && addTask()} />
-            <button style={t.taskAddBtn} onClick={addTask}>+</button>
-          </div>
-          {tasks.length === 0 ? (
-            <div style={t.empty}>nothing yet. suspicious.</div>
-          ) : (
-            tasks.map((x, i) => (
-              <div key={i} style={t.taskItem}>
-                <button style={t.taskCheck(x.done)} onClick={() => toggleTask(i)}>
-                  {x.done ? "✓" : ""}
-                </button>
-                <span style={t.taskText(x.done)}>{x.text}</span>
-                <button style={t.taskRm} onClick={() => rmTask(i)}>{"×"}</button>
-              </div>
-            ))
-          )}
-        </div>
       </div>
     </div>
   );
