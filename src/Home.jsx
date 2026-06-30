@@ -6,6 +6,17 @@ const TOOLS = [
   { to: "/command", glyph: "🜂", name: "Command Center", desc: "The day, at a glance." },
 ];
 
+// Companion sites that live on their own — open in a new tab.
+const SITES = [
+  { href: "https://witchlight-chronik.vercel.app/", glyph: "📜", name: "Witchlight Chronik", desc: "The Witchlight campaign chronicle." },
+  { href: "https://witchlight-hoard.vercel.app/",   glyph: "🐉", name: "Witchlight Hoard",   desc: "Loot & lore for the Hoard table." },
+  { href: "https://goldhort.vercel.app/",           glyph: "🪙", name: "Goldhort",           desc: "The gold hoard, counted." },
+  { href: "https://arcana-academy.vercel.app/",     glyph: "🔮", name: "Arcana Academy",     desc: "Lessons in the arcane." },
+  { href: "https://marginalia-wheat.vercel.app/",   glyph: "✒️", name: "Marginalia",         desc: "Notes in the margins." },
+  { href: "https://sturmauge.vercel.app/",          glyph: "🌩️", name: "Sturmauge",          desc: "The eye of the storm." },
+  { href: "https://tarot-theta-seven.vercel.app/",  glyph: "🃏", name: "Tarot",              desc: "Draw a card." },
+];
+
 export default function Home() {
   return (
     <>
@@ -31,6 +42,25 @@ export default function Home() {
             Your focus retreat. Pomodoro, ambient hearth, and a fox with opinions. Opens full-screen.
           </span>
         </Link>
+      </nav>
+
+      <div className="hearth-eyebrow section-label">Beyond the Hearth</div>
+      <nav className="grid">
+        {SITES.map((s) => (
+          <a
+            key={s.href}
+            href={s.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="card"
+          >
+            <span className="card-glyph">{s.glyph}</span>
+            <span className="card-name">
+              {s.name} <span className="card-ext">↗</span>
+            </span>
+            <span className="card-desc">{s.desc}</span>
+          </a>
+        ))}
       </nav>
     </>
   );
