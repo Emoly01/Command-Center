@@ -4,7 +4,6 @@ const TOOLS = [
   { to: "/water",   glyph: "💧", name: "Water",          desc: "Two glasses. That's the deal." },
   { to: "/cleaning",glyph: "🌿", name: "Cleaning",       desc: "One zone at a time. XP & streaks." },
   { to: "/command", glyph: "🜂", name: "Command Center", desc: "The day, at a glance." },
-  { to: "/combat",  glyph: "⚔", name: "Combat Tracker", desc: "Initiative, HP, the lot." },
 ];
 
 export default function Home() {

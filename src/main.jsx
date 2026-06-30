@@ -8,7 +8,6 @@ import Water from "./tools/Water";
 import Fox from "./tools/Fox";
 import Cleaning from "./tools/Cleaning";
 import CommandCenter from "./tools/CommandCenter";
-import Placeholder from "./tools/Placeholder";
 
 function Shell({ children }) {
   return (
@@ -29,7 +28,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route path="/command" element={<CommandCenter />} />
         <Route path="/" element={<Shell><Home /></Shell>} />
         <Route path="/water" element={<Shell><Water /></Shell>} />
-        <Route path="/combat" element={<Shell><Placeholder title="Combat Tracker" note="Initiative and HP tracker — stays device-local since you GM from one spot." /></Shell>} />
         <Route path="*" element={<Shell><Home /></Shell>} />
       </Routes>
     </BrowserRouter>
