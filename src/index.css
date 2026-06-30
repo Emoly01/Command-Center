@@ -45,6 +45,8 @@ body{margin:0;background:radial-gradient(120% 80% at 50% -10%,#2a1b13 0%,var(--c
 .card.full{grid-column:1 / -1;border-color:var(--ember-lo);
   background:linear-gradient(110deg,#241612,#1a1310);}
 .card.full .card-name{color:var(--gold);}
+.section-label{margin:34px 0 14px;text-align:center;}
+.card-ext{font-size:12px;color:var(--smoke);vertical-align:middle;}
 .tool-top{display:flex;align-items:center;gap:12px;margin-bottom:22px;}
 .back{display:inline-flex;align-items:center;gap:7px;background:var(--ash);
   border:1px solid var(--ash-edge);color:var(--bone);border-radius:999px;
