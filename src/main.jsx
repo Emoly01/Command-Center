@@ -10,11 +10,11 @@ import Fox from "./tools/Fox";
 import Cleaning from "./tools/Cleaning";
 import CommandCenter from "./tools/CommandCenter";
 
-function Shell({ children }) {
+function Shell({ children, wide }) {
   return (
     <>
       <EmberField />
-      <div className="shell">{children}</div>
+      <div className={wide ? "shell shell-wide" : "shell"}>{children}</div>
     </>
   );
 }
@@ -27,10 +27,10 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route path="/fox" element={<Fox />} />
         <Route path="/cleaning" element={<Cleaning />} />
         <Route path="/command" element={<CommandCenter />} />
-        <Route path="/" element={<Shell><Home /></Shell>} />
+        <Route path="/" element={<Shell wide><Home /></Shell>} />
         <Route path="/water" element={<Shell><Water /></Shell>} />
         <Route path="/movement" element={<Shell><Movement /></Shell>} />
-        <Route path="*" element={<Shell><Home /></Shell>} />
+        <Route path="*" element={<Shell wide><Home /></Shell>} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>
