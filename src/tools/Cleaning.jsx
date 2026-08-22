@@ -1,102 +1,118 @@
-import { useState, useEffect } from "react";
+import { Fragment, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useSyncedState } from "../lib/useSyncedState";
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const THIS_MONTH = TODAY.slice(0, 7);
 
+const SERIF = "'Instrument Serif', Georgia, serif";
+const MONO = "'IBM Plex Mono', ui-monospace, monospace";
+
 const XP_VALUES = { daily: 10, sweep: 5, zoneTask: 5, zoneBonus: 15, monthly: 50, boss: 40 };
 
 const LEVELS = [
-  { min: 0,    max: 99,   name: "Sleepy Familiar",   creature: "🐱", desc: "Just waking up..." },
-  { min: 100,  max: 249,  name: "Curious Sprite",    creature: "🐱", desc: "Starting to stir!" },
-  { min: 250,  max: 499,  name: "Tidy Apprentice",   creature: "🐈", desc: "Learning the craft!" },
-  { min: 500,  max: 799,  name: "Hearth Keeper",     creature: "🐈‍⬛", desc: "The home feels cozier." },
-  { min: 800,  max: 1199, name: "Moon Witch",        creature: "🦊", desc: "Magic is in the air!" },
-  { min: 1200, max: 1799, name: "Grove Guardian",    creature: "🦊", desc: "The forest approves." },
-  { min: 1800, max: 9999, name: "Arcane Keeper",     creature: "🐉", desc: "Legendary tidiness." },
+  { min: 0,    max: 99,   roman: "I",   name: "Sleepy Familiar",  desc: "Just waking up." },
+  { min: 100,  max: 249,  roman: "II",  name: "Curious Sprite",   desc: "Starting to stir." },
+  { min: 250,  max: 499,  roman: "III", name: "Tidy Apprentice",  desc: "Learning the craft." },
+  { min: 500,  max: 799,  roman: "IV",  name: "Hearth Keeper",    desc: "The home feels cosier." },
+  { min: 800,  max: 1199, roman: "V",   name: "Moon Witch",       desc: "Magic is in the air." },
+  { min: 1200, max: 1799, roman: "VI",  name: "Grove Guardian",   desc: "The forest approves." },
+  { min: 1800, max: 9999, roman: "VII", name: "Arcane Keeper",    desc: "Legendary tidiness." },
+];
+
+// The Familiar: a pixel creature that sprouts limbs, wings and bulk per level.
+// One 11×9 frame per level, drawn from the level's accent colour — x is body,
+// o is an eye, . is empty.
+const SPRITE = [
+  ["...........", "...........", "....xx.....", "...xxxx....", "..xxoxxx...", "..xxxxxx...", "...xxxx....", "...........", "..........."],
+  ["...........", "...........", "...xxxx....", "..xxxxxx...", "..xoxxox...", "..xxxxxx...", "...xxxx....", "...x..x....", "..........."],
+  ["...........", "...x...x...", "...xxxxx...", "..xxxxxxx..", "..xoxxxox..", "..xxxxxxx..", "...xxxxx...", "...x...x...", "..........."],
+  ["...........", "..x.....x..", "..xx...xx..", "..xxxxxxx..", "..xoxxxox..", "..xxxxxxx..", "...xxxxx.x.", "...xxxxx.x.", "..xx...xxx."],
+  [".x.......x.", ".xx.....xx.", "..xxxxxxx..", "..xoxxxox..", ".xxxxxxxxx.", "..xxxxxxx..", "...xxxxx.x.", "..xxxxxx.x.", "..xx...xxx."],
+  [".x.......x.", ".xx.....xx.", "..xxxxxxx..", ".xxoxxxoxx.", "xxxxxxxxxxx", ".xxxxxxxxx.", "..xxxxxxx..", "..xx...xx..", ".xx.....xx."],
+  ["x.x.....x.x", ".xxx...xxx.", ".xxxxxxxxx.", "xxxoxxxoxxx", "xxxxxxxxxxx", ".xxxxxxxxx.", "..xxxxxxx..", ".xxx...xxx.", "xx.x...x.xx"],
 ];
 
 const BADGES = [
-  { id: "first_zone",    emoji: "⭐", name: "First Steps",      desc: "Complete your first zone",           check: (s) => s.totalZones >= 1 },
-  { id: "three_sweeps",  emoji: "⚡", name: "Quick Spark",      desc: "Do 3 sweeps in one day",             check: (s) => s.maxSweepsDay >= 3 },
-  { id: "streak3",       emoji: "🔥", name: "On a Roll",        desc: "3 day activity streak",              check: (s) => s.streak >= 3 },
-  { id: "streak7",       emoji: "🌕", name: "Moon Cycle",       desc: "7 day activity streak",              check: (s) => s.streak >= 7 },
-  { id: "allzones",      emoji: "🏡", name: "Full House",       desc: "Complete every zone at least once",  check: (s) => s.zonesUnlocked >= 5 },
-  { id: "monthly1",      emoji: "🌿", name: "Deep Roots",       desc: "Complete a monthly task",            check: (s) => s.totalMonthly >= 1 },
-  { id: "monthly5",      emoji: "🌙", name: "Ritual Keeper",   desc: "Complete 5 monthly tasks",           check: (s) => s.totalMonthly >= 5 },
-  { id: "xp500",         emoji: "✨", name: "Spellbound",       desc: "Reach 500 XP",                       check: (s) => s.xp >= 500 },
-  { id: "xp1000",        emoji: "🔮", name: "Arcane Mastery",   desc: "Reach 1000 XP",                      check: (s) => s.xp >= 1000 },
-  { id: "dailystreak",   emoji: "☀️", name: "Morning Light",    desc: "Complete all daily habits 5 times",  check: (s) => s.fullDailyDays >= 5 },
-  { id: "boss1",         emoji: "⚔️", name: "Boss Slayer",      desc: "Defeat your first weekly boss",      check: (s) => s.bossesDefeated >= 1 },
-  { id: "boss5",         emoji: "🛡️", name: "Dungeon Regular",  desc: "Defeat 5 weekly bosses",             check: (s) => s.bossesDefeated >= 5 },
+  { id: "first_zone",   mark: "✦", name: "First Steps",      desc: "Complete your first zone",      check: (s) => s.totalZones >= 1 },
+  { id: "three_sweeps", mark: "⁂", name: "Quick Spark",      desc: "Three sweeps in one day",       check: (s) => s.maxSweepsDay >= 3 },
+  { id: "streak3",      mark: "△", name: "On a Roll",        desc: "Three day streak",              check: (s) => s.streak >= 3 },
+  { id: "streak7",      mark: "☾", name: "Moon Cycle",       desc: "Seven day streak",              check: (s) => s.streak >= 7 },
+  { id: "allzones",     mark: "⌂", name: "Full House",       desc: "Every zone at least once",      check: (s) => s.zonesUnlocked >= 5 },
+  { id: "monthly1",     mark: "❧", name: "Deep Roots",       desc: "Complete a monthly task",       check: (s) => s.totalMonthly >= 1 },
+  { id: "monthly5",     mark: "◈", name: "Ritual Keeper",    desc: "Five monthly tasks",            check: (s) => s.totalMonthly >= 5 },
+  { id: "xp500",        mark: "✧", name: "Spellbound",       desc: "Reach 500 XP",                  check: (s) => s.xp >= 500 },
+  { id: "xp1000",       mark: "◎", name: "Arcane Mastery",   desc: "Reach 1000 XP",                 check: (s) => s.xp >= 1000 },
+  { id: "dailystreak",  mark: "☀", name: "Morning Light",    desc: "All daily habits, five times",  check: (s) => s.fullDailyDays >= 5 },
+  { id: "boss1",        mark: "†", name: "Boss Slayer",      desc: "Defeat your first boss",        check: (s) => s.bossesDefeated >= 1 },
+  { id: "boss5",        mark: "⬡", name: "Dungeon Regular",  desc: "Defeat five bosses",            check: (s) => s.bossesDefeated >= 5 },
 ];
 
 const dailyHabits = [
-  { id: "dishes",       emoji: "🍽️", label: "Dishes washed or in dishwasher before bed" },
-  { id: "laundry-move", emoji: "🧺", label: "Move laundry along (start / switch / fold one pile)" },
-  { id: "tidy-sweep",   emoji: "📦", label: "2-min tidy sweep — put things back where they belong" },
+  { id: "dishes",       label: "Dishes washed or in the dishwasher before bed" },
+  { id: "laundry-move", label: "Move laundry along — start, switch or fold one pile" },
+  { id: "tidy-sweep",   label: "Two-minute tidy sweep — things back where they belong" },
 ];
 
 const miniSweeps = [
-  { id: "ms1", label: "Sink refresh — quick rinse of sink & wipe of tap" },
+  { id: "ms1", label: "Sink refresh — quick rinse of sink and wipe of tap" },
   { id: "ms2", label: "Counter clear — clear one surface completely" },
   { id: "ms3", label: "Floor grab — pick up anything on the floor in one room" },
   { id: "ms4", label: "Trash check — empty any bin that's full or smelly" },
   { id: "ms5", label: "Mirror wipe — one mirror with a damp cloth" },
-  { id: "ms6", label: "Doorknobs & light switches — quick disinfectant wipe" },
-  { id: "ms7", label: "Pile sort — pick one clutter pile and put 5 things away" },
+  { id: "ms6", label: "Doorknobs and light switches — a disinfectant wipe" },
+  { id: "ms7", label: "Pile sort — pick one clutter pile, put five things away" },
   { id: "ms8", label: "Entrance reset — shoes, coats, bags all in their place" },
 ];
 
 const zones = [
-  { id: "bathroom", emoji: "🛁", label: "Bathroom + Toilet", tasks: [
-    "Empty bathroom bin & replace bag","Wipe toilet inside and out","Clean sink and taps","Wipe mirror","Clean shower or bath","Wipe surfaces & shelves (top → bottom)","Sweep & mop/wipe floor",
+  { id: "bathroom", label: "Bathroom & Toilet", tasks: [
+    "Empty bathroom bin and replace bag", "Wipe toilet inside and out", "Clean sink and taps", "Wipe mirror", "Clean shower or bath", "Wipe surfaces and shelves, top to bottom", "Sweep and mop the floor",
   ]},
-  { id: "kitchen", emoji: "🍳", label: "Kitchen", tasks: [
-    "Empty kitchen bin & replace bag","Check recycling — take out if full","Clear and wipe all counters","Clean stovetop","Wipe down appliances","Clean sink","Wipe cabinet fronts","Sweep & mop floor",
+  { id: "kitchen", label: "Kitchen", tasks: [
+    "Empty kitchen bin and replace bag", "Check recycling — take out if full", "Clear and wipe all counters", "Clean stovetop", "Wipe down appliances", "Clean sink", "Wipe cabinet fronts", "Sweep and mop floor",
   ]},
-  { id: "bedroom", emoji: "🛏️", label: "Bedroom", tasks: [
-    "Empty bedroom bin & replace bag","Put away or sort all laundry off the floor","Dust surfaces (top → bottom, left → right)","Wipe down bedside tables","Change bedsheets if needed","Vacuum floor",
+  { id: "bedroom", label: "Bedroom", tasks: [
+    "Empty bedroom bin and replace bag", "Put away or sort all laundry off the floor", "Dust surfaces, top to bottom", "Wipe down bedside tables", "Change bedsheets if needed", "Vacuum floor",
   ]},
-  { id: "living", emoji: "🛋️", label: "Living Room + Hallway", tasks: [
-    "Collect & empty any bins or stray trash","Tidy clutter — everything back in its place","Dust surfaces (top → bottom, left → right)","Wipe down coffee table, shelves","Vacuum sofa if needed","Vacuum/sweep floor","Wipe hallway surfaces, hang up anything stray",
+  { id: "living", label: "Living Room & Hallway", tasks: [
+    "Collect and empty any bins or stray trash", "Tidy clutter — everything back in its place", "Dust surfaces, top to bottom", "Wipe down coffee table and shelves", "Vacuum sofa if needed", "Vacuum or sweep floor", "Wipe hallway surfaces, hang up anything stray",
   ]},
-  { id: "laundry", emoji: "🧺", label: "Laundry Day", tasks: [
-    "Check pockets before washing","Sort laundry into piles","Start first wash load","Move to dryer / hang when done","Fold everything that's dry","Put folded laundry away — all of it",
+  { id: "laundry", label: "Laundry Day", tasks: [
+    "Check pockets before washing", "Sort laundry into piles", "Start first wash load", "Move to dryer or hang when done", "Fold everything that's dry", "Put folded laundry away — all of it",
   ]},
 ];
 
 // effort ≈ minutes the task realistically takes; the energy filter uses it.
 const monthlyTasks = [
-  { id: "mt1",  emoji: "🔥", label: "Clean the oven inside",                          effort: 30 },
-  { id: "mt2",  emoji: "🪟", label: "Wipe down all windows",                          effort: 30 },
-  { id: "mt3",  emoji: "❄️", label: "Clean out the fridge",                           effort: 30 },
-  { id: "mt4",  emoji: "🌀", label: "Clean washing machine (drum clean cycle)",       effort: 10 },
-  { id: "mt5",  emoji: "💨", label: "Check & replace air/ventilation filters",        effort: 10 },
-  { id: "mt6",  emoji: "🕸️", label: "Dust corners & cobwebs in all rooms",            effort: 10 },
-  { id: "mt7",  emoji: "🛋️", label: "Vacuum under & behind furniture",                effort: 30 },
-  { id: "mt8",  emoji: "🚿", label: "Descale showerhead & taps",                      effort: 10 },
-  { id: "mt9",  emoji: "🌿", label: "Wipe down plants & pots",                        effort: 10 },
-  { id: "mt10", emoji: "📦", label: "Declutter one drawer or shelf",                  effort: 10 },
-  { id: "mt11", emoji: "🧴", label: "Check & toss expired products (bathroom/kitchen)", effort: 10 },
-  { id: "mt12", emoji: "🌬️", label: "Clean out dryer lint trap & hose",               effort: 10 },
+  { id: "mt1",  label: "Clean the oven inside",                     effort: 30 },
+  { id: "mt2",  label: "Wipe down all windows",                     effort: 30 },
+  { id: "mt3",  label: "Clean out the fridge",                      effort: 30 },
+  { id: "mt4",  label: "Run the washing machine drum clean",        effort: 10 },
+  { id: "mt5",  label: "Check and replace ventilation filters",     effort: 10 },
+  { id: "mt6",  label: "Dust corners and cobwebs in all rooms",     effort: 10 },
+  { id: "mt7",  label: "Vacuum under and behind furniture",         effort: 30 },
+  { id: "mt8",  label: "Descale showerhead and taps",               effort: 10 },
+  { id: "mt9",  label: "Wipe down plants and pots",                 effort: 10 },
+  { id: "mt10", label: "Declutter one drawer or shelf",             effort: 10 },
+  { id: "mt11", label: "Toss expired products, bath and kitchen",   effort: 10 },
+  { id: "mt12", label: "Clean out dryer lint trap and hose",        effort: 10 },
 ];
 
 const getLevel = (xp) => LEVELS.findLast(l => xp >= l.min) || LEVELS[0];
 
-// Unlockable color themes. minXp lines up with a LEVELS threshold so the
-// picker can say which level unlocks each one. Slots: deep/mid (dark panels &
-// header gradient), line (borders), glow (accent text & light borders),
-// bright/dim (text on dark), dark (button fill), lite (light accent panels),
-// xp1/xp2 (XP bar gradient).
+// Unlockable colour themes. They tint accents only — the shell stays the
+// Hearth's coal and ember. minXp lines up with a LEVELS threshold so the
+// picker can say which level unlocks each one. Slots: glow (accent marks &
+// text), edge (accent borders), panel (raised surfaces), xp1/xp2 (XP bar
+// gradient and the Familiar's glow), dim (quiet accent text).
 const THEMES = [
-  { id: "twilight", name: "Twilight Veil", emoji: "🔮", minXp: 0,    c: { deep: "#2d1f3d", mid: "#4a3060", line: "#7b5ea7", glow: "#c9a9ff", bright: "#e8d5ff", dim: "#9a7abf", dark: "#3d2a54", lite: "#f0e8ff", xp1: "#a78bda", xp2: "#e0aaff" } },
-  { id: "sea",      name: "Moonlit Sea",   emoji: "🌊", minXp: 250,  c: { deep: "#1f2a3d", mid: "#2f4a66", line: "#5e7ea7", glow: "#a9c6ff", bright: "#d5e6ff", dim: "#7a93bf", dark: "#2a3a54", lite: "#e8f0ff", xp1: "#8badd0", xp2: "#aad2ff" } },
-  { id: "grove",    name: "Forest Grove",  emoji: "🌿", minXp: 500,  c: { deep: "#1f3326", mid: "#2f5a40", line: "#5ea77a", glow: "#a9e6bd", bright: "#d9f5e0", dim: "#7ab391", dark: "#2a4a36", lite: "#e8f7ec", xp1: "#8bd0a4", xp2: "#aaf0c4" } },
-  { id: "ember",    name: "Ember Hearth",  emoji: "🔥", minXp: 800,  c: { deep: "#3d251f", mid: "#66402f", line: "#a7755e", glow: "#ffc6a9", bright: "#ffe6d5", dim: "#bf937a", dark: "#543a2a", lite: "#fff0e8", xp1: "#d0a48b", xp2: "#ffd2aa" } },
-  { id: "rose",     name: "Rose Arcana",   emoji: "🥀", minXp: 1200, c: { deep: "#3d1f2c", mid: "#662f4a", line: "#a75e7e", glow: "#ffa9c9", bright: "#ffd5e6", dim: "#bf7a97", dark: "#542a3c", lite: "#ffe8f1", xp1: "#d08bab", xp2: "#ffaad0" } },
-  { id: "dragon",   name: "Dragon Gold",   emoji: "🐉", minXp: 1800, c: { deep: "#33291a", mid: "#5c4a26", line: "#a78b4e", glow: "#f2d391", bright: "#faeccd", dim: "#b39c6e", dark: "#4a3d22", lite: "#faf2df", xp1: "#c9ad72", xp2: "#f2d99b" } },
+  { id: "twilight", name: "Twilight Veil", minXp: 0,    glow: "#c9a9ff", edge: "rgba(155,124,205,.34)", panel: "linear-gradient(160deg,rgba(58,42,80,.5) 0%,rgba(24,19,28,.75) 100%)",  xp1: "#a78bda", xp2: "#e0aaff", dim: "#9a7abf" },
+  { id: "sea",      name: "Moonlit Sea",   minXp: 250,  glow: "#a9c6ff", edge: "rgba(110,142,190,.34)", panel: "linear-gradient(160deg,rgba(36,54,80,.5) 0%,rgba(18,22,28,.75) 100%)",  xp1: "#8badd0", xp2: "#aad2ff", dim: "#7a93bf" },
+  { id: "grove",    name: "Forest Grove",  minXp: 500,  glow: "#a9e6bd", edge: "rgba(94,167,122,.34)",  panel: "linear-gradient(160deg,rgba(36,74,52,.45) 0%,rgba(17,24,20,.75) 100%)", xp1: "#8bd0a4", xp2: "#aaf0c4", dim: "#7ab391" },
+  { id: "ember",    name: "Ember Hearth",  minXp: 800,  glow: "#ffc6a9", edge: "rgba(232,133,58,.34)",  panel: "linear-gradient(160deg,rgba(80,48,32,.5) 0%,rgba(26,18,16,.75) 100%)",  xp1: "#d0a48b", xp2: "#ffd2aa", dim: "#bf937a" },
+  { id: "rose",     name: "Rose Arcana",   minXp: 1200, glow: "#ffa9c9", edge: "rgba(167,94,126,.34)",  panel: "linear-gradient(160deg,rgba(80,36,54,.5) 0%,rgba(26,16,20,.75) 100%)",  xp1: "#d08bab", xp2: "#ffaad0", dim: "#bf7a97" },
+  { id: "dragon",   name: "Dragon Gold",   minXp: 1800, glow: "#f2d391", edge: "rgba(167,139,78,.34)",  panel: "linear-gradient(160deg,rgba(74,61,34,.5) 0%,rgba(24,20,14,.75) 100%)",  xp1: "#c9ad72", xp2: "#f2d99b", dim: "#b39c6e" },
 ];
 
 // Monday of the current week — the boss is nominated once per week.
@@ -182,7 +198,8 @@ const buildHistory = (history, dc, sc, zc) => {
   return { ...history, [TODAY]: { zone: completedZone?.id || prev.zone || null, sweeps: sweepCount, allDaily } };
 };
 
-// Add XP to a snapshot; returns the next snapshot plus any level-up / badge to surface.
+// Add XP to a snapshot; returns the next snapshot plus a popup for whatever
+// it unlocked — a level-up outranks a badge.
 const grantXp = (state, amount, history) => {
   const oldLevel = getLevel(state.xp);
   const newXp = state.xp + amount;
@@ -193,20 +210,87 @@ const grantXp = (state, amount, history) => {
   BADGES.forEach(b => {
     if (!badges.includes(b.id) && b.check(stats)) { badges.push(b.id); badgeUnlocked = b; }
   });
-  return {
-    state: { ...state, xp: newXp, badges, history },
-    leveledTo: newLvl.name !== oldLevel.name ? newLvl : null,
-    badgeUnlocked,
-  };
+  const popup = newLvl.name !== oldLevel.name
+    ? { kind: "Level up", title: newLvl.name, desc: newLvl.desc, lvl: LEVELS.indexOf(newLvl) }
+    : badgeUnlocked
+      ? { kind: "Badge unlocked", mark: badgeUnlocked.mark, title: badgeUnlocked.name, desc: badgeUnlocked.desc }
+      : null;
+  return { state: { ...state, xp: newXp, badges, history }, popup };
 };
+
+// The Familiar itself — a grid of px-sized cells, hatching in on mount and
+// bobbing forever after. Brighter and glowing at the higher levels.
+function Familiar({ idx, theme, px }) {
+  const art = SPRITE[idx] || SPRITE[0];
+  const glow = idx >= 4;
+  return (
+    <span
+      style={{
+        display: "grid",
+        gridTemplateColumns: `repeat(11, ${px}px)`,
+        gap: 1,
+        animation: `gr-hatch .5s cubic-bezier(.2,1.3,.4,1), gr-bob ${3.6 - idx * 0.2}s ease-in-out infinite .5s`,
+      }}
+    >
+      {art.flatMap((row, y) =>
+        row.split("").map((c, x) => (
+          <span
+            key={`${y}-${x}`}
+            style={{
+              width: px, height: px, borderRadius: 1,
+              background: c === "x" ? theme.glow : c === "o" ? "rgba(14,10,8,.9)" : "transparent",
+              opacity: c === "x" ? 0.55 + idx * 0.075 : 1,
+              boxShadow: c === "x" && glow ? `0 0 4px ${theme.xp2}` : "none",
+            }}
+          />
+        ))
+      )}
+    </span>
+  );
+}
+
+// One tappable checklist line — used by Daily, Sweeps, Zones and Monthly.
+function Row({ checked, onToggle, label, tag, theme }) {
+  return (
+    <button onClick={onToggle} style={{
+      display: "flex", alignItems: "center", gap: 13, width: "100%", textAlign: "left",
+      padding: "15px 16px", borderRadius: 13, cursor: "pointer", fontFamily: "inherit",
+      background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.07)",
+    }}>
+      <span style={{
+        width: 19, height: 19, flex: "0 0 19px", borderRadius: 6, display: "flex",
+        alignItems: "center", justifyContent: "center", fontSize: 11,
+        border: `1px solid ${checked ? "transparent" : "rgba(232,133,58,.3)"}`,
+        background: checked ? theme.glow : "transparent", color: "#1a0f0a",
+      }}>{checked ? "✓" : ""}</span>
+      <span style={{
+        flex: 1, fontSize: 13.5, lineHeight: 1.45, textWrap: "pretty",
+        color: checked ? "#7d6b5f" : "#e8dbd0",
+        textDecoration: checked ? "line-through" : "none",
+      }}>{label}</span>
+      {tag && <span style={{
+        fontFamily: MONO, fontSize: 9, letterSpacing: ".12em", textTransform: "uppercase",
+        color: "#6d5c50", whiteSpace: "nowrap",
+      }}>{tag}</span>}
+    </button>
+  );
+}
+
+const sectionLabel = {
+  fontFamily: MONO, fontSize: 9.5, letterSpacing: ".2em",
+  textTransform: "uppercase", color: "#8a7566",
+};
+const intro = {
+  margin: "0 0 6px", fontFamily: SERIF, fontStyle: "italic",
+  fontSize: 17, lineHeight: 1.4, color: "#a08c7e",
+};
+const listCol = { display: "flex", flexDirection: "column", gap: 9, paddingTop: 26 };
 
 export default function Cleaning() {
   const [s, setS, status] = useSyncedState("cleaning", DEFAULT_STATE);
   const [tab, setTab] = useState("home");
   const [activeZone, setActiveZone] = useState(null);
-  const [newBadge, setNewBadge] = useState(null);
-  const [newLevel, setNewLevel] = useState(null);
-  const [bossWin, setBossWin] = useState(null);
+  const [popup, setPopup] = useState(null);
   const [energy, setEnergy] = useState(null);
 
   // Roll the daily/sweep/zone maps over at midnight, monthly at month start.
@@ -249,36 +333,35 @@ export default function Cleaning() {
   const boss = s.boss && s.boss.week === WEEK_KEY ? s.boss : null;
   const bossZone = boss ? zones.find(z => z.id === boss.zoneId) : null;
   const bossDays = bossZone ? daysSince(zoneLast[bossZone.id]) : null;
-  const activeTheme = THEMES.find(t => t.id === s.theme && xp >= t.minXp) || THEMES[0];
-  const T = activeTheme.c;
+  const T = THEMES.find(t => t.id === s.theme && xp >= t.minXp) || THEMES[0];
 
-  const sweepDone = miniSweeps.filter(s => sweepChecked[s.id]).length;
+  const dailyDone = dailyHabits.filter(h => dailyChecked[h.id]).length;
+  const sweepDone = miniSweeps.filter(sw => sweepChecked[sw.id]).length;
+  const monthlyDone = monthlyTasks.filter(t => monthlyChecked[t.id]).length;
   const currentZone = zones.find(z => z.id === activeZone);
   const zoneDone = currentZone ? currentZone.tasks.filter((_, i) => zoneChecked[`${activeZone}-${i}`]).length : 0;
   const allDailyDone = dailyHabits.every(h => dailyChecked[h.id]);
+  const streak = computeStats(history, s.totalMonthly || 0, xp, s.bossesDefeated || 0).streak;
+
   const level = getLevel(xp);
-  const nextLevel = LEVELS[LEVELS.indexOf(level) + 1];
-  const xpInLevel = xp - level.min;
+  const levelIdx = LEVELS.indexOf(level);
+  const nextLevel = LEVELS[levelIdx + 1];
   const xpNeeded = (nextLevel ? nextLevel.min : level.max + 1) - level.min;
-  const progress = Math.min(100, Math.round((xpInLevel / xpNeeded) * 100));
+  const progress = Math.min(100, Math.round(((xp - level.min) / xpNeeded) * 100));
 
   const toggleDaily = (id) => {
     const checked = { ...dailyChecked, [id]: !dailyChecked[id] };
     if (dailyChecked[id]) { setS({ ...s, daily: { ...s.daily, checked } }); return; }
     const hist = buildHistory(history, checked, sweepChecked, zoneChecked);
     let next = { ...s, daily: { ...s.daily, checked } };
-    let leveled = null, badge = null;
     let r = grantXp(next, XP_VALUES.daily, hist); next = r.state;
-    if (r.leveledTo) leveled = r.leveledTo;
-    if (r.badgeUnlocked) badge = r.badgeUnlocked;
+    let pop = r.popup;
     if (dailyHabits.every(h => checked[h.id])) { // bonus for all 3
       r = grantXp(next, 15, hist); next = r.state;
-      if (r.leveledTo) leveled = r.leveledTo;
-      if (r.badgeUnlocked) badge = r.badgeUnlocked;
+      pop = r.popup || pop;
     }
     setS(next);
-    if (leveled) setNewLevel(leveled);
-    if (badge) setNewBadge(badge);
+    if (pop) setPopup(pop);
   };
 
   const toggleSweep = (id) => {
@@ -288,8 +371,7 @@ export default function Cleaning() {
     const lastDone = { ...ld, sweeps: { ...(ld.sweeps || {}), [id]: TODAY } };
     const r = grantXp({ ...s, sweeps: { ...s.sweeps, checked }, lastDone }, XP_VALUES.sweep, hist);
     setS(r.state);
-    if (r.leveledTo) setNewLevel(r.leveledTo);
-    if (r.badgeUnlocked) setNewBadge(r.badgeUnlocked);
+    if (r.popup) setPopup(r.popup);
   };
 
   const toggleZone = (zId, i) => {
@@ -299,28 +381,23 @@ export default function Cleaning() {
     const zone = zones.find(z => z.id === zId);
     const hist = buildHistory(history, dailyChecked, sweepChecked, checked);
     let next = { ...s, zones: { ...s.zones, checked } };
-    let leveled = null, badge = null;
     let r = grantXp(next, XP_VALUES.zoneTask, hist); next = r.state; // XP for the task
-    if (r.leveledTo) leveled = r.leveledTo;
-    if (r.badgeUnlocked) badge = r.badgeUnlocked;
-    let slain = null;
+    let pop = r.popup;
     if (zone?.tasks.every((_, idx) => checked[`${zId}-${idx}`])) { // bonus on completion
       next = { ...next, lastDone: { ...ld, zones: { ...(ld.zones || {}), [zId]: TODAY } } };
       r = grantXp(next, XP_VALUES.zoneBonus, hist); next = r.state;
-      if (r.leveledTo) leveled = r.leveledTo;
-      if (r.badgeUnlocked) badge = r.badgeUnlocked;
+      pop = r.popup || pop;
       if (next.boss && next.boss.week === WEEK_KEY && next.boss.zoneId === zId && !next.boss.defeated) {
         next = { ...next, boss: { ...next.boss, defeated: true }, bossesDefeated: (next.bossesDefeated || 0) + 1 };
         r = grantXp(next, XP_VALUES.boss, hist); next = r.state;
-        if (r.leveledTo) leveled = r.leveledTo;
-        if (r.badgeUnlocked) badge = r.badgeUnlocked;
-        slain = zone;
+        pop = r.popup || pop || {
+          kind: "Boss defeated", mark: "†", title: zone.label,
+          desc: `+${XP_VALUES.boss} bonus XP. The dungeon is swept.`,
+        };
       }
     }
     setS(next);
-    if (leveled) setNewLevel(leveled);
-    if (badge) setNewBadge(badge);
-    if (slain) setBossWin(slain);
+    if (pop) setPopup(pop);
   };
 
   const toggleMonthly = (id) => {
@@ -329,8 +406,7 @@ export default function Cleaning() {
     const next = { ...s, monthly: { ...s.monthly, checked }, totalMonthly: (s.totalMonthly || 0) + 1 };
     const r = grantXp(next, XP_VALUES.monthly, history);
     setS(r.state);
-    if (r.leveledTo) setNewLevel(r.leveledTo);
-    if (r.badgeUnlocked) setNewBadge(r.badgeUnlocked);
+    if (r.popup) setPopup(r.popup);
   };
 
   const resetToday = () => setS((prev) => ({
@@ -355,7 +431,7 @@ export default function Cleaning() {
       if (type === "zone") setRolledZone(zones[Math.floor(Math.random() * zones.length)]);
       else setRolledSweep(miniSweeps[Math.floor(Math.random() * miniSweeps.length)]);
       count++;
-      if (count > 10) {
+      if (count > 9) {
         clearInterval(interval);
         setRolling(null);
         if (type === "zone") setRolledZone(weightedPick(zones, z => zoneLast[z.id]));
@@ -372,20 +448,20 @@ export default function Cleaning() {
         .filter(z => !z.tasks.every((_, i) => zoneChecked[`${z.id}-${i}`]))
         .sort((a, b) => staleDays(zoneLast[b.id]) - staleDays(zoneLast[a.id]))
         .slice(0, 2)
-        .forEach(z => out.push({ key: `z-${z.id}`, emoji: z.emoji, label: z.label, tag: "~30 min", go: () => { setTab("zones"); setActiveZone(z.id); } }));
+        .forEach(z => out.push({ key: `z-${z.id}`, label: z.label, tag: "30 min", go: () => { setTab("zones"); setActiveZone(z.id); } }));
     }
     monthlyTasks
       .filter(t => t.effort <= mins && !monthlyChecked[t.id])
       .slice(0, 2)
-      .forEach(t => out.push({ key: `m-${t.id}`, emoji: t.emoji, label: t.label, tag: `~${t.effort} min`, go: () => toggleMonthly(t.id) }));
+      .forEach(t => out.push({ key: `m-${t.id}`, label: t.label, tag: `${t.effort} min`, go: () => toggleMonthly(t.id) }));
     dailyHabits
       .filter(h => !dailyChecked[h.id])
-      .forEach(h => out.push({ key: `d-${h.id}`, emoji: h.emoji, label: h.label, tag: "~2 min", go: () => toggleDaily(h.id) }));
+      .forEach(h => out.push({ key: `d-${h.id}`, label: h.label, tag: "2 min", go: () => toggleDaily(h.id) }));
     [...miniSweeps]
       .filter(sw => !sweepChecked[sw.id])
       .sort((a, b) => staleDays((ld.sweeps || {})[b.id]) - staleDays((ld.sweeps || {})[a.id]))
       .slice(0, 3)
-      .forEach(sw => out.push({ key: `s-${sw.id}`, emoji: "⚡", label: sw.label, tag: "~2 min", go: () => toggleSweep(sw.id) }));
+      .forEach(sw => out.push({ key: `s-${sw.id}`, label: sw.label, tag: "2 min", go: () => toggleSweep(sw.id) }));
     return out.slice(0, 6);
   };
   const suggestions = energy ? suggestFor(energy) : [];
@@ -396,429 +472,471 @@ export default function Cleaning() {
   });
 
   const tabs = [
-    { id: "home",    label: "🏡 Home" },
-    { id: "daily",   label: "☀️ Daily" },
-    { id: "sweeps",  label: "⚡ Sweeps" },
-    { id: "zones",   label: "🗂️ Zones" },
-    { id: "monthly", label: "🌙 Monthly" },
-    { id: "history", label: "📅 History" },
+    ["home", "Home"], ["daily", "Daily"], ["sweeps", "Sweeps"],
+    ["zones", "Zones"], ["monthly", "Monthly"], ["history", "History"],
   ];
 
-  const CheckItem = ({ checked, onToggle, emoji, label }) => (
-    <div onClick={onToggle} style={{
-      display: "flex", alignItems: "center", gap: 12, background: "#fff",
-      borderRadius: 12, padding: "13px 15px", marginBottom: 9, cursor: "pointer",
-      border: `1.5px solid ${checked ? "#a8c5a0" : "#e0d8ce"}`, opacity: checked ? 0.7 : 1,
-    }}>
-      <div style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0, border: `2px solid ${checked ? "#6a9e62" : "#c5b9ac"}`, background: checked ? "#6a9e62" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        {checked && <span style={{ color: "#fff", fontSize: 13 }}>✓</span>}
-      </div>
-      {emoji && <span style={{ fontSize: 18 }}>{emoji}</span>}
-      <span style={{ fontSize: 13, color: "#3a3028", textDecoration: checked ? "line-through" : "none", flex: 1 }}>{label}</span>
-    </div>
-  );
+  const syncLabel = status === "ready" ? "Synced" : status === "offline" ? "On device" : "Syncing";
+  const syncDot = status === "ready" ? "#6ee7a8" : status === "offline" ? "#d65a4a" : "#ffc79a";
 
   return (
-    <div style={{ fontFamily: "Georgia, serif", background: "#f0ede6", minHeight: "100vh", paddingBottom: 32 }}>
+    <div style={{
+      minHeight: "100vh", fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
+      color: "#f6ede5", display: "flex", justifyContent: "center", padding: "0 0 64px",
+      background: "radial-gradient(120% 70% at 50% -10%,#2b1a10 0%,#1a1210 38%,#120e0c 100%) fixed",
+    }}>
+      <div style={{ width: "100%", maxWidth: 430, padding: "26px 20px 0", position: "relative" }}>
 
-      {/* Back to the Hearth hub */}
-      <Link to="/" style={{
-        position: "fixed", top: 12, left: 12, zIndex: 50,
-        background: T.deep, color: T.bright, textDecoration: "none",
-        fontSize: 12, padding: "6px 12px", borderRadius: 999,
-        border: `1px solid ${T.line}`, fontFamily: "Georgia, serif",
-      }}>← Hearth</Link>
+        {/* Back to the Hearth, and how safe today's progress is */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <Link to="/" className="back">← Hearth</Link>
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 6, fontFamily: MONO,
+            fontSize: 10, letterSpacing: ".14em", textTransform: "uppercase",
+            color: status === "offline" ? "#e0a29a" : "#9c8371",
+          }}>
+            <b style={{
+              width: 7, height: 7, borderRadius: "50%", display: "inline-block",
+              background: syncDot, boxShadow: `0 0 6px ${syncDot}`,
+            }} />{syncLabel}
+          </span>
+        </div>
 
-      {/* Sync status */}
-      <div style={{
-        position: "fixed", top: 12, right: 12, zIndex: 50, fontSize: 11,
-        padding: "5px 11px", borderRadius: 999, fontFamily: "Georgia, serif",
-        background: T.deep, border: `1px solid ${T.line}`,
-        color: status === "offline" ? "#f0b8b8" : T.glow,
-      }}>
-        {status === "ready" ? "✓ synced" : status === "offline" ? "● on device" : "⋯ syncing"}
-      </div>
+        <h1 style={{
+          margin: "10px 0 0", fontFamily: SERIF, fontWeight: 400, fontSize: 44,
+          lineHeight: .95, letterSpacing: "-.015em", color: "#f4a15d",
+        }}>Cleaning<br />Grimoire</h1>
 
-      {/* Badge / level / boss popup */}
-      {(newBadge || newLevel || bossWin) && (
-        <div onClick={() => { setNewBadge(null); setNewLevel(null); setBossWin(null); }} style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100,
-          display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
-        }}>
-          <div style={{ background: T.deep, borderRadius: 20, padding: "32px 28px", textAlign: "center", maxWidth: 300, border: `2px solid ${T.line}` }}>
-            {newLevel && <>
-              <div style={{ fontSize: 48 }}>{newLevel.creature}</div>
-              <div style={{ color: T.bright, fontSize: 18, fontWeight: "bold", margin: "8px 0 4px" }}>Level Up!</div>
-              <div style={{ color: T.glow, fontSize: 15 }}>{newLevel.name}</div>
-              <div style={{ color: T.dim, fontSize: 13, marginTop: 6 }}>{newLevel.desc}</div>
-            </>}
-            {bossWin && !newLevel && <>
-              <div style={{ fontSize: 48 }}>⚔️</div>
-              <div style={{ color: T.bright, fontSize: 18, fontWeight: "bold", margin: "8px 0 4px" }}>Boss Defeated!</div>
-              <div style={{ color: T.glow, fontSize: 15 }}>{bossWin.emoji} {bossWin.label}</div>
-              <div style={{ color: T.dim, fontSize: 13, marginTop: 6 }}>+{XP_VALUES.boss} bonus XP — the dungeon is swept.</div>
-            </>}
-            {newBadge && !newLevel && !bossWin && <>
-              <div style={{ fontSize: 48 }}>{newBadge.emoji}</div>
-              <div style={{ color: T.bright, fontSize: 18, fontWeight: "bold", margin: "8px 0 4px" }}>Badge Unlocked!</div>
-              <div style={{ color: T.glow, fontSize: 15 }}>{newBadge.name}</div>
-              <div style={{ color: T.dim, fontSize: 13, marginTop: 6 }}>{newBadge.desc}</div>
-            </>}
-            <div style={{ color: T.line, fontSize: 12, marginTop: 16 }}>tap to close</div>
+        {/* The Familiar and the level it has grown into */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 22 }}>
+          <div style={{
+            width: 56, height: 56, flex: "0 0 56px", borderRadius: 16, position: "relative",
+            display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden",
+            border: `1px solid ${T.edge}`, background: T.panel,
+          }}>
+            <Familiar idx={levelIdx} theme={T} px={4} />
+            <span style={{
+              position: "absolute", right: 3, bottom: 2, fontFamily: MONO,
+              fontSize: 8, letterSpacing: ".1em", color: T.dim,
+            }}>{level.roman}</span>
+          </div>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+              <span style={{ fontFamily: SERIF, fontSize: 22, lineHeight: 1.1, color: "#f4e6da" }}>{level.name}</span>
+              <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: ".12em", color: "#9c8371" }}>{xp} XP</span>
+            </div>
+            <div style={{ height: 3, borderRadius: 99, background: "rgba(255,255,255,.08)", overflow: "hidden" }}>
+              <div style={{
+                height: "100%", borderRadius: 99, transition: "width .5s ease",
+                width: `${progress}%`, background: `linear-gradient(90deg,${T.xp1},${T.xp2})`,
+              }} />
+            </div>
+            <span style={{
+              fontFamily: MONO, fontSize: 9.5, letterSpacing: ".1em",
+              textTransform: "uppercase", color: "#7d6b5f",
+            }}>
+              {nextLevel ? `${nextLevel.min - xp} XP to ${nextLevel.name}` : "Highest level reached"}
+            </span>
           </div>
         </div>
-      )}
 
-      {/* Header */}
-      <div style={{ background: `linear-gradient(135deg, ${T.deep} 0%, ${T.mid} 100%)`, padding: "24px 20px 20px", textAlign: "center" }}>
-        <div style={{ fontSize: 36 }}>{level.creature}</div>
-        <div style={{ color: T.bright, fontSize: 11, marginTop: 2 }}>{level.name}</div>
-        <div style={{ color: T.glow, fontSize: 18, fontWeight: "bold", margin: "4px 0 2px" }}>Emily's Cleaning Grimoire</div>
-        <div style={{ color: T.dim, fontSize: 12 }}>{level.desc}</div>
-        {/* XP bar */}
-        <div style={{ marginTop: 12, background: "rgba(255,255,255,0.1)", borderRadius: 20, height: 8, overflow: "hidden" }}>
-          <div style={{ width: `${progress}%`, height: "100%", background: `linear-gradient(90deg, ${T.xp1}, ${T.xp2})`, borderRadius: 20, transition: "width 0.5s" }} />
+        {/* Tabs */}
+        <div style={{
+          display: "flex", gap: 20, overflowX: "auto", margin: "26px -20px 0",
+          padding: "0 20px 10px", borderBottom: "1px solid rgba(232,133,58,.14)", scrollbarWidth: "none",
+        }}>
+          {tabs.map(([id, label]) => (
+            <button key={id} onClick={() => { setTab(id); setActiveZone(null); }} style={{
+              flex: "0 0 auto", background: "none", border: "none", padding: "0 0 9px", margin: "0 0 -11px",
+              cursor: "pointer", fontFamily: MONO, fontSize: 10.5, letterSpacing: ".18em",
+              textTransform: "uppercase", whiteSpace: "nowrap",
+              color: tab === id ? "#f6ede5" : "#8a7566",
+              borderBottom: `1px solid ${tab === id ? T.glow : "transparent"}`,
+            }}>{label}</button>
+          ))}
         </div>
-        <div style={{ color: T.dim, fontSize: 11, marginTop: 4 }}>{xp} XP · {nextLevel ? `${nextLevel.min - xp} to ${nextLevel.name}` : "Max level!"}</div>
-      </div>
-
-      {/* Tabs — scrollable */}
-      <div style={{ display: "flex", overflowX: "auto", background: "#fff", borderBottom: "1px solid #e0d8ce", scrollbarWidth: "none" }}>
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => { setTab(t.id); setActiveZone(null); }} style={{
-            flexShrink: 0, padding: "12px 14px", border: "none", cursor: "pointer", fontSize: 12,
-            fontFamily: "Georgia, serif", whiteSpace: "nowrap",
-            background: tab === t.id ? "#f0ede6" : "#fff",
-            color: tab === t.id ? T.mid : "#9a8a7a",
-            fontWeight: tab === t.id ? "bold" : "normal",
-            borderBottom: tab === t.id ? `2px solid ${T.line}` : "2px solid transparent",
-          }}>{t.label}</button>
-        ))}
-      </div>
-
-      <div style={{ maxWidth: 480, margin: "0 auto", padding: "20px 16px" }}>
 
         {/* HOME */}
         {tab === "home" && (
-          <div>
-            <div style={{ background: T.deep, borderRadius: 16, padding: "20px", marginBottom: 16, border: `1px solid ${T.mid}` }}>
-              <div style={{ display: "flex", justifyContent: "space-around", textAlign: "center" }}>
-                {[["☀️", allDailyDone ? "✅" : `${dailyHabits.filter(h=>dailyChecked[h.id]).length}/3`, "Daily"],
-                  ["⚡", sweepDone, "Sweeps"],
-                  ["🌙", `${Object.keys(monthlyChecked).filter(k=>monthlyChecked[k]).length}/${monthlyTasks.length}`, "Monthly"]
-                ].map(([e,v,l]) => (
-                  <div key={l}>
-                    <div style={{ fontSize: 20 }}>{e}</div>
-                    <div style={{ fontSize: 18, fontWeight: "bold", color: T.bright }}>{v}</div>
-                    <div style={{ fontSize: 11, color: T.dim }}>{l}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {/* Weekly boss */}
-            {bossZone && (
-              <div onClick={() => { if (!boss.defeated) { setTab("zones"); setActiveZone(bossZone.id); } }} style={{
-                background: boss.defeated ? "#edf5eb" : "#fff", borderRadius: 16, padding: "16px", marginBottom: 16,
-                border: `1.5px solid ${boss.defeated ? "#a8c5a0" : T.glow}`, cursor: boss.defeated ? "default" : "pointer",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ fontSize: 28 }}>{boss.defeated ? "🏆" : "⚔️"}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 10, color: "#9a8a7a", letterSpacing: 1.5, textTransform: "uppercase" }}>This week's boss</div>
-                    <div style={{ fontSize: 15, fontWeight: "bold", color: "#3a3028", marginTop: 2 }}>{bossZone.emoji} {bossZone.label}</div>
-                    <div style={{ fontSize: 12, color: boss.defeated ? "#6a9e62" : T.line, marginTop: 2 }}>
-                      {boss.defeated ? `Defeated! +${XP_VALUES.boss} bonus XP earned ⚔️`
-                        : bossDays === null ? `Never fully cleared — slay it for +${XP_VALUES.boss} bonus XP`
-                        : `Untouched for ${bossDays} day${bossDays === 1 ? "" : "s"} — slay it for +${XP_VALUES.boss} bonus XP`}
-                    </div>
-                  </div>
-                  {!boss.defeated && <span style={{ color: "#c5b9ac" }}>›</span>}
-                </div>
-              </div>
-            )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 26, paddingTop: 26 }}>
 
-            {/* Energy filter */}
-            <div style={{ background: "#fff", borderRadius: 16, padding: "16px", marginBottom: 16, border: "1px solid #e0d8ce" }}>
-              <div style={{ fontSize: 13, fontWeight: "bold", color: "#3a3028", marginBottom: 10 }}>🔋 What can you face right now?</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                {[[2, "✨ 2 min"], [10, "⚡ 10 min"], [30, "🔥 30 min+"]].map(([mins, label]) => (
-                  <button key={mins} onClick={() => setEnergy(energy === mins ? null : mins)} style={{
-                    flex: 1, padding: "10px 6px", borderRadius: 10, fontSize: 12, cursor: "pointer", fontFamily: "Georgia, serif",
-                    border: `1.5px solid ${energy === mins ? T.line : "#e0d8ce"}`,
-                    background: energy === mins ? T.lite : "#f5f2ee",
-                    color: energy === mins ? T.mid : "#7a6a5a",
-                    fontWeight: energy === mins ? "bold" : "normal",
-                  }}>{label}</button>
-                ))}
-              </div>
-              {energy && (suggestions.length === 0 ? (
-                <p style={{ fontSize: 12, color: "#7a6a5a", margin: "12px 0 0", textAlign: "center" }}>Everything that size is done — go rest 🌿</p>
-              ) : (
-                <div style={{ marginTop: 12 }}>
-                  {suggestions.map(sg => (
-                    <div key={sg.key} onClick={sg.go} style={{
-                      display: "flex", alignItems: "center", gap: 10, background: "#f5f2ee",
-                      borderRadius: 10, padding: "10px 12px", marginBottom: 8, cursor: "pointer",
-                      border: "1px solid #e0d8ce",
-                    }}>
-                      <span style={{ fontSize: 16 }}>{sg.emoji}</span>
-                      <span style={{ fontSize: 12.5, color: "#3a3028", flex: 1 }}>{sg.label}</span>
-                      <span style={{ fontSize: 10, color: T.line, background: T.lite, border: `1px solid ${T.glow}`, borderRadius: 999, padding: "2px 8px", flexShrink: 0 }}>{sg.tag}</span>
-                    </div>
-                  ))}
-                  <p style={{ fontSize: 10.5, color: "#9a8a7a", margin: "2px 0 0", textAlign: "center" }}>dustiest first — tap a task to {energy >= 30 ? "open or " : ""}check it off</p>
-                </div>
+            <div style={{ display: "flex", borderRadius: 16, border: "1px solid rgba(232,133,58,.14)", overflow: "hidden" }}>
+              {[[`${dailyDone}/3`, "Daily"], [String(sweepDone), "Sweeps"], [String(streak), "Streak"]].map(([v, l], i) => (
+                <Fragment key={l}>
+                  {i > 0 && <div style={{ width: 1, background: "rgba(232,133,58,.14)" }} />}
+                  <div style={{ flex: 1, padding: "16px 8px", textAlign: "center" }}>
+                    <div style={{ fontFamily: SERIF, fontSize: 24, lineHeight: 1, color: "#f4e6da" }}>{v}</div>
+                    <div style={{
+                      fontFamily: MONO, fontSize: 9, letterSpacing: ".18em",
+                      textTransform: "uppercase", color: "#8a7566", marginTop: 6,
+                    }}>{l}</div>
+                  </div>
+                </Fragment>
               ))}
             </div>
 
-            {/* Badges preview */}
-            <div style={{ background: "#fff", borderRadius: 16, padding: "16px", marginBottom: 16, border: "1px solid #e0d8ce" }}>
-              <div style={{ fontSize: 13, fontWeight: "bold", color: "#3a3028", marginBottom: 10 }}>✨ Badges ({badges.length}/{BADGES.length}) — {badges.length === BADGES.length ? "all unlocked! 🔮" : `${BADGES.length - badges.length} remaining`}</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {BADGES.map(b => {
-                  const earned = badges.includes(b.id);
+            {/* This week's boss — the zone that has gone longest untouched */}
+            {bossZone && (
+              <button
+                onClick={() => { if (!boss.defeated) { setTab("zones"); setActiveZone(bossZone.id); } }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 14, width: "100%", textAlign: "left",
+                  padding: "16px 18px", borderRadius: 16, cursor: boss.defeated ? "default" : "pointer",
+                  fontFamily: "inherit", background: T.panel, border: `1px solid ${T.edge}`,
+                  opacity: boss.defeated ? .65 : 1,
+                }}
+              >
+                <span style={{ fontFamily: SERIF, fontSize: 26, lineHeight: 1, width: 34, textAlign: "center", color: T.glow }}>
+                  {boss.defeated ? "✓" : "†"}
+                </span>
+                <span style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+                  <span style={{
+                    fontFamily: MONO, fontSize: 9, letterSpacing: ".2em",
+                    textTransform: "uppercase", color: "#c86b2a",
+                  }}>This week&rsquo;s boss</span>
+                  <span style={{ fontFamily: SERIF, fontSize: 21, lineHeight: 1.1, color: "#f6ede5" }}>{bossZone.label}</span>
+                  <span style={{ fontSize: 11.5, color: "#a08c7e" }}>
+                    {boss.defeated ? `Defeated — +${XP_VALUES.boss} XP claimed`
+                      : bossDays === null ? `Never fully cleared · +${XP_VALUES.boss} XP`
+                      : `Untouched ${bossDays} day${bossDays === 1 ? "" : "s"} · +${XP_VALUES.boss} XP`}
+                  </span>
+                </span>
+              </button>
+            )}
+
+            {/* Energy filter */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={sectionLabel}>What can you face right now</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                {[[2, "2 min"], [10, "10 min"], [30, "30 min+"]].map(([mins, label]) => {
+                  const on = energy === mins;
                   return (
-                    <div key={b.id} style={{
-                      display: "flex", alignItems: "center", gap: 12,
-                      background: earned ? T.lite : "#f5f2ee",
-                      border: `1.5px solid ${earned ? T.glow : "#e0d8ce"}`,
-                      borderRadius: 12, padding: "10px 14px",
-                      opacity: earned ? 1 : 0.5,
-                    }}>
-                      <span style={{ fontSize: 24, flexShrink: 0 }}>{b.emoji}</span>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: "bold", color: earned ? T.mid : "#9a8a7a" }}>{b.name}</div>
-                        <div style={{ fontSize: 11, color: earned ? T.line : "#b0a8a0" }}>{b.desc}</div>
-                      </div>
-                      {earned && <span style={{ marginLeft: "auto", fontSize: 14 }}>✅</span>}
-                    </div>
+                    <button key={mins} onClick={() => setEnergy(on ? null : mins)} style={{
+                      flex: 1, padding: "11px 6px", borderRadius: 11, cursor: "pointer",
+                      fontFamily: MONO, fontSize: 10.5, letterSpacing: ".14em", textTransform: "uppercase",
+                      background: on ? T.panel : "rgba(255,255,255,.03)",
+                      border: `1px solid ${on ? T.edge : "rgba(255,255,255,.08)"}`,
+                      color: on ? T.glow : "#9c8371",
+                    }}>{label}</button>
                   );
                 })}
               </div>
+              {energy && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {suggestions.map(sg => (
+                    <button key={sg.key} onClick={sg.go} style={{
+                      display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left",
+                      padding: "13px 15px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit",
+                      background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.07)",
+                    }}>
+                      <span style={{ flex: 1, fontSize: 13, lineHeight: 1.4, color: "#e8dbd0", textWrap: "pretty" }}>{sg.label}</span>
+                      <span style={{
+                        fontFamily: MONO, fontSize: 9, letterSpacing: ".12em", textTransform: "uppercase",
+                        color: "#8a7566", whiteSpace: "nowrap",
+                      }}>{sg.tag}</span>
+                    </button>
+                  ))}
+                  {suggestions.length === 0 && (
+                    <p style={{
+                      margin: "2px 0 0", fontSize: 12.5, fontStyle: "italic", fontFamily: SERIF,
+                      color: "#a08c7e", textAlign: "center",
+                    }}>Everything that size is done. Go rest.</p>
+                  )}
+                </div>
+              )}
             </div>
-            {/* Randomizer */}
-            <div style={{ background: T.deep, borderRadius: 16, padding: "16px", marginBottom: 16, border: `1px solid ${T.mid}` }}>
-              <div style={{ fontSize: 13, color: T.glow, fontWeight: "bold", marginBottom: 12, textAlign: "center" }}>🎲 Can't decide? Fate favors the dustiest corners…</div>
-              <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={() => rollRandom("zone")} style={{
-                  flex: 1, padding: "12px 8px", borderRadius: 12, border: `1.5px solid ${T.line}`,
-                  background: rolling === "zone" ? T.line : T.dark, color: T.bright,
-                  fontSize: 13, cursor: "pointer", fontFamily: "Georgia, serif",
-                }}>🗂️ Random Zone</button>
-                <button onClick={() => rollRandom("sweep")} style={{
-                  flex: 1, padding: "12px 8px", borderRadius: 12, border: `1.5px solid ${T.line}`,
-                  background: rolling === "sweep" ? T.line : T.dark, color: T.bright,
-                  fontSize: 13, cursor: "pointer", fontFamily: "Georgia, serif",
-                }}>⚡ Random Sweep</button>
+
+            {/* Randomiser — weighted toward the dustiest corners */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={sectionLabel}>Let fate decide</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                {[["zone", "Random zone"], ["sweep", "Random sweep"]].map(([type, label]) => (
+                  <button key={type} onClick={() => rollRandom(type)} style={{
+                    flex: 1, padding: "12px 8px", borderRadius: 11, cursor: "pointer",
+                    fontFamily: MONO, fontSize: 10.5, letterSpacing: ".14em", textTransform: "uppercase",
+                    background: rolling === type ? T.panel : "rgba(255,255,255,.03)",
+                    border: `1px solid ${rolling === type ? T.edge : "rgba(255,255,255,.09)"}`,
+                    color: "#e8dbd0",
+                  }}>{label}</button>
+                ))}
               </div>
               {rolledZone && (
-                <div onClick={() => { setTab("zones"); setActiveZone(rolledZone.id); }} style={{
-                  marginTop: 12, background: T.lite, borderRadius: 12, padding: "12px 16px",
-                  border: `1.5px solid ${T.glow}`, cursor: "pointer", textAlign: "center",
+                <button onClick={() => { setTab("zones"); setActiveZone(rolledZone.id); }} style={{
+                  width: "100%", textAlign: "center", padding: 16, borderRadius: 14, cursor: "pointer",
+                  fontFamily: "inherit", background: T.panel, border: `1px solid ${T.edge}`,
                 }}>
-                  <div style={{ fontSize: 22 }}>{rolledZone.emoji}</div>
-                  <div style={{ fontSize: 14, fontWeight: "bold", color: T.mid }}>{rolledZone.label}</div>
+                  <span style={{ display: "block", fontFamily: SERIF, fontSize: 22, lineHeight: 1.15, color: "#f6ede5" }}>
+                    {rolledZone.label}
+                  </span>
                   {!rolling && (
-                    <div style={{ fontSize: 10.5, color: T.line, marginTop: 2 }}>
-                      {(d => d === null ? "never fully cleared ✧" : d === 0 ? "cleared today" : `last cleared ${d} day${d === 1 ? "" : "s"} ago`)(daysSince(zoneLast[rolledZone.id]))}
-                    </div>
+                    <span style={{ display: "block", fontSize: 11.5, color: "#a08c7e", marginTop: 4 }}>
+                      {(d => d === null ? "Never fully cleared" : d === 0 ? "Cleared today" : `Last cleared ${d} day${d === 1 ? "" : "s"} ago`)(daysSince(zoneLast[rolledZone.id]))}
+                    </span>
                   )}
-                  <div style={{ fontSize: 11, color: T.line, marginTop: 3 }}>tap to go there →</div>
-                </div>
+                </button>
               )}
               {rolledSweep && (
                 <div style={{
-                  marginTop: 12, background: T.lite, borderRadius: 12, padding: "12px 16px",
-                  border: `1.5px solid ${T.glow}`, textAlign: "center",
+                  width: "100%", textAlign: "center", padding: 16, borderRadius: 14,
+                  background: T.panel, border: `1px solid ${T.edge}`,
                 }}>
-                  <div style={{ fontSize: 22 }}>⚡</div>
-                  <div style={{ fontSize: 14, fontWeight: "bold", color: T.mid }}>{rolledSweep.label}</div>
+                  <span style={{ display: "block", fontFamily: SERIF, fontSize: 19, lineHeight: 1.25, color: "#f6ede5", textWrap: "pretty" }}>
+                    {rolledSweep.label}
+                  </span>
                 </div>
               )}
             </div>
 
-            {/* Theme picker */}
-            <div style={{ background: "#fff", borderRadius: 16, padding: "16px", marginBottom: 16, border: "1px solid #e0d8ce" }}>
-              <div style={{ fontSize: 13, fontWeight: "bold", color: "#3a3028", marginBottom: 10 }}>🎨 Grimoire Themes — level up to unlock more</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-                {THEMES.map(t => {
-                  const unlocked = xp >= t.minXp;
-                  const selected = activeTheme.id === t.id;
-                  const lvlName = LEVELS.find(l => l.min === t.minXp)?.name;
+            {/* Badges */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+                <span style={sectionLabel}>Badges</span>
+                <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: ".12em", color: "#6d5c50" }}>
+                  {badges.length} of {BADGES.length}
+                </span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
+                {BADGES.map(b => {
+                  const earned = badges.includes(b.id);
                   return (
-                    <div key={t.id} onClick={() => unlocked && setS({ ...s, theme: t.id })} style={{
-                      textAlign: "center", borderRadius: 12, padding: "10px 6px",
-                      border: `1.5px solid ${selected ? t.c.line : "#e0d8ce"}`,
-                      background: selected ? t.c.lite : "#f5f2ee",
-                      cursor: unlocked ? "pointer" : "default",
-                      opacity: unlocked ? 1 : 0.45,
+                    <div key={b.id} title={b.desc} style={{
+                      display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                      padding: "12px 6px", borderRadius: 13, textAlign: "center",
+                      border: `1px solid ${earned ? T.edge : "rgba(255,255,255,.06)"}`,
+                      background: earned ? T.panel : "transparent",
                     }}>
-                      <div style={{
-                        width: 28, height: 28, margin: "0 auto 6px", borderRadius: "50%",
-                        background: `linear-gradient(135deg, ${t.c.deep}, ${t.c.mid})`,
-                        border: `2px solid ${t.c.glow}`, display: "flex", alignItems: "center",
-                        justifyContent: "center", fontSize: 13,
-                      }}>{unlocked ? t.emoji : "🔒"}</div>
-                      <div style={{ fontSize: 11, fontWeight: "bold", color: "#3a3028" }}>{t.name}</div>
-                      <div style={{ fontSize: 9, color: "#9a8a7a", marginTop: 2 }}>{unlocked ? (selected ? "in use" : "tap to wear") : `at ${lvlName}`}</div>
+                      <span style={{ fontFamily: SERIF, fontSize: 20, lineHeight: 1, color: earned ? T.glow : "#5d4e45" }}>{b.mark}</span>
+                      <span style={{ fontSize: 10, lineHeight: 1.25, textWrap: "pretty", color: earned ? "#e8dbd0" : "#6d5c50" }}>{b.name}</span>
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            <div style={{ background: "#fdf6ed", borderRadius: 12, padding: "12px 16px", border: "1px solid #e8d8c0" }}>
-              <p style={{ margin: 0, fontSize: 12, color: "#7a6a5a", fontStyle: "italic" }}>💡 One zone per day off. Daily habits every day. Sweeps whenever you have 2 minutes. You've got this 🌿</p>
+            {/* Themes — unlocked by XP, tinting accents only */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={sectionLabel}>Grimoire themes</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+                {THEMES.map(t => {
+                  const unlocked = xp >= t.minXp;
+                  const sel = T.id === t.id;
+                  const lvl = LEVELS.find(l => l.min === t.minXp);
+                  return (
+                    <div key={t.id} onClick={() => { if (unlocked) setS({ ...s, theme: t.id }); }} style={{
+                      display: "flex", flexDirection: "column", alignItems: "center", gap: 7,
+                      padding: "12px 4px", borderRadius: 13, cursor: unlocked ? "pointer" : "default",
+                      border: `1px solid ${sel ? t.edge : "rgba(255,255,255,.06)"}`,
+                      background: sel ? t.panel : "transparent", opacity: unlocked ? 1 : .4,
+                    }}>
+                      <span style={{
+                        width: 22, height: 22, borderRadius: "50%",
+                        background: `linear-gradient(135deg,${t.xp1},${t.xp2})`,
+                        border: `1px solid ${t.edge}`,
+                      }} />
+                      <span style={{ fontSize: 10.5, color: sel ? "#f6ede5" : "#a08c7e" }}>{t.name}</span>
+                      <span style={{
+                        fontFamily: MONO, fontSize: 10, letterSpacing: ".12em",
+                        textTransform: "uppercase", color: "#9c8371",
+                      }}>{unlocked ? (sel ? "In use" : "Wear") : (lvl ? lvl.name : "")}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
+
+            <p style={{
+              margin: 0, paddingTop: 6, borderTop: "1px solid rgba(232,133,58,.12)",
+              fontFamily: SERIF, fontStyle: "italic", fontSize: 15, lineHeight: 1.5,
+              color: "#8a7566", textWrap: "pretty",
+            }}>
+              One zone per day off. Daily habits every day. Sweeps whenever you have two minutes.
+            </p>
           </div>
         )}
 
         {/* DAILY */}
         {tab === "daily" && (
-          <div>
-            <p style={{ color: "#7a6a5a", fontSize: 13, marginBottom: 16 }}>5 minutes a day keeps the chaos away. +{XP_VALUES.daily} XP each, +15 bonus for all three! ⭐</p>
-            {dailyHabits.map(h => <CheckItem key={h.id} checked={!!dailyChecked[h.id]} onToggle={() => toggleDaily(h.id)} emoji={h.emoji} label={h.label} />)}
+          <div style={listCol}>
+            <p style={intro}>Five minutes a day keeps the chaos away. {XP_VALUES.daily} XP each, 15 more for all three.</p>
+            {dailyHabits.map(h => (
+              <Row key={h.id} theme={T} checked={!!dailyChecked[h.id]} onToggle={() => toggleDaily(h.id)} label={h.label} />
+            ))}
             {allDailyDone && (
-              <div style={{ textAlign: "center", marginTop: 8, padding: "12px", background: T.lite, borderRadius: 12, border: `1px solid ${T.glow}` }}>
-                <span style={{ fontSize: 20 }}>⭐</span> <span style={{ fontSize: 14, color: T.mid, fontWeight: "bold" }}>All done! +15 bonus XP!</span>
-              </div>
+              <div style={{
+                marginTop: 6, textAlign: "center", padding: 14, borderRadius: 13,
+                background: T.panel, border: `1px solid ${T.edge}`,
+                fontFamily: SERIF, fontSize: 19, color: T.glow,
+              }}>All three done. +15 bonus XP.</div>
             )}
           </div>
         )}
 
         {/* SWEEPS */}
         {tab === "sweeps" && (
-          <div>
-            <p style={{ color: "#7a6a5a", fontSize: 13, marginBottom: 16 }}>Quick wins! +{XP_VALUES.sweep} XP each. No commitment needed.</p>
-            {miniSweeps.map(s => <CheckItem key={s.id} checked={!!sweepChecked[s.id]} onToggle={() => toggleSweep(s.id)} label={s.label} />)}
-            <div style={{ textAlign: "center", marginTop: 8, color: "#7a6a5a", fontSize: 13 }}>
-              {sweepDone} sweep{sweepDone !== 1 ? "s" : ""} today {sweepDone >= 3 ? "⚡ On a roll!" : sweepDone >= 1 ? "👍 Good start!" : ""}
+          <div style={listCol}>
+            <p style={intro}>Quick wins, {XP_VALUES.sweep} XP each. No commitment needed.</p>
+            {miniSweeps.map(sw => (
+              <Row key={sw.id} theme={T} checked={!!sweepChecked[sw.id]} onToggle={() => toggleSweep(sw.id)} label={sw.label} />
+            ))}
+            <div style={{
+              textAlign: "center", marginTop: 8, fontFamily: MONO, fontSize: 10,
+              letterSpacing: ".16em", textTransform: "uppercase", color: "#8a7566",
+            }}>
+              {sweepDone} sweep{sweepDone === 1 ? "" : "s"} today{sweepDone >= 3 ? " — on a roll" : ""}
             </div>
           </div>
         )}
 
-        {/* ZONES */}
-        {tab === "zones" && (
-          <div>
-            {!activeZone ? (
-              <>
-                <p style={{ color: "#7a6a5a", fontSize: 13, marginBottom: 16 }}>One zone per day off. +{XP_VALUES.zoneBonus} XP for completing a full zone! 💚</p>
-                {zones.map(z => {
-                  const done = z.tasks.filter((_, i) => zoneChecked[`${z.id}-${i}`]).length;
-                  const complete = done === z.tasks.length;
-                  return (
-                    <div key={z.id} onClick={() => setActiveZone(z.id)} style={{
-                      display: "flex", alignItems: "center", justifyContent: "space-between",
-                      background: complete ? "#edf5eb" : "#fff", borderRadius: 12, padding: "14px 16px",
-                      marginBottom: 10, cursor: "pointer", border: `1.5px solid ${complete ? "#a8c5a0" : "#e0d8ce"}`,
+        {/* ZONES — the list, then one zone opened */}
+        {tab === "zones" && !currentZone && (
+          <div style={listCol}>
+            <p style={intro}>One zone per day off. {XP_VALUES.zoneBonus} XP for clearing a whole one.</p>
+            {zones.map((z, i) => {
+              const done = z.tasks.filter((_, k) => zoneChecked[`${z.id}-${k}`]).length;
+              const complete = done === z.tasks.length;
+              const isBoss = !!bossZone && bossZone.id === z.id && !!boss && !boss.defeated;
+              return (
+                <button key={z.id} onClick={() => setActiveZone(z.id)} style={{
+                  display: "flex", alignItems: "center", gap: 14, width: "100%", textAlign: "left",
+                  padding: "15px 18px", borderRadius: 14, cursor: "pointer", fontFamily: "inherit",
+                  background: complete ? T.panel : "rgba(255,255,255,.03)",
+                  border: `1px solid ${complete || isBoss ? T.edge : "rgba(255,255,255,.07)"}`,
+                }}>
+                  <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: ".12em", color: "#8a7566" }}>
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span style={{ flex: 1, display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
+                    <span style={{ fontFamily: SERIF, fontSize: 20, lineHeight: 1.15, color: "#f4e6da" }}>{z.label}</span>
+                    <span style={{
+                      fontFamily: MONO, fontSize: 9.5, letterSpacing: ".14em", textTransform: "uppercase",
+                      color: complete || isBoss ? T.glow : "#8a7566",
                     }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <span style={{ fontSize: 22 }}>{z.emoji}</span>
-                        <div>
-                          <div style={{ fontSize: 15, color: "#3a3028", fontWeight: "bold" }}>{z.label}</div>
-                          <div style={{ fontSize: 12, color: "#9a8a7a" }}>{z.tasks.length} tasks</div>
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        {done > 0 && <span style={{ fontSize: 12, color: "#6a9e62" }}>{done}/{z.tasks.length}</span>}
-                        {complete ? <span>✅</span> : <span style={{ color: "#c5b9ac" }}>›</span>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </>
-            ) : (
-              <>
-                <button onClick={() => setActiveZone(null)} style={{ background: "none", border: "none", cursor: "pointer", color: T.mid, fontSize: 14, fontFamily: "Georgia, serif", marginBottom: 16, padding: 0 }}>← Back to zones</button>
-                <div style={{ background: "#fff", borderRadius: 14, overflow: "hidden", border: "1.5px solid #e0d8ce" }}>
-                  <div style={{ background: `linear-gradient(135deg, ${T.deep}, ${T.mid})`, padding: "16px 20px" }}>
-                    <div style={{ fontSize: 26 }}>{currentZone.emoji}</div>
-                    <div style={{ color: "#fff", fontSize: 17, fontWeight: "bold" }}>{currentZone.label}</div>
-                    <div style={{ color: T.glow, fontSize: 12, marginTop: 2 }}>{zoneDone}/{currentZone.tasks.length} tasks · +{XP_VALUES.zoneTask} XP per task · +{XP_VALUES.zoneBonus} bonus on completion</div>
-                  </div>
-                  <div style={{ padding: "12px 16px" }}>
-                    {currentZone.tasks.map((task, i) => {
-                      const key = `${activeZone}-${i}`;
-                      const checked = !!zoneChecked[key];
-                      const isTrash = task.toLowerCase().includes("bin") || task.toLowerCase().includes("trash") || task.toLowerCase().includes("recycling");
-                      return (
-                        <div key={i} onClick={() => toggleZone(activeZone, i)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 4px", borderBottom: i < currentZone.tasks.length - 1 ? "1px solid #f0e8e0" : "none", cursor: "pointer" }}>
-                          <div style={{ width: 20, height: 20, borderRadius: 5, flexShrink: 0, border: `2px solid ${checked ? "#6a9e62" : "#c5b9ac"}`, background: checked ? "#6a9e62" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            {checked && <span style={{ color: "#fff", fontSize: 12 }}>✓</span>}
-                          </div>
-                          <span style={{ fontSize: 14, color: "#3a3028", textDecoration: checked ? "line-through" : "none", opacity: checked ? 0.6 : 1 }}>
-                            {isTrash ? "🗑️ " : ""}{task}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                {zoneDone === currentZone.tasks.length && (
-                  <div style={{ textAlign: "center", marginTop: 16, padding: "12px", background: T.lite, borderRadius: 12, border: `1px solid ${T.glow}` }}>
-                    <span style={{ fontSize: 14, color: T.mid, fontWeight: "bold" }}>✨ Zone complete! +{XP_VALUES.zoneBonus} XP!</span>
-                  </div>
-                )}
-              </>
+                      {complete ? "Complete" : `${done} of ${z.tasks.length}`}{isBoss ? " · Boss" : ""}
+                    </span>
+                  </span>
+                  <span style={{ color: "#6d5c50", fontSize: 15 }}>›</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {tab === "zones" && currentZone && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingTop: 26 }}>
+            <button onClick={() => setActiveZone(null)} style={{
+              alignSelf: "flex-start", background: "none", border: "none", padding: 0, cursor: "pointer",
+              fontFamily: MONO, fontSize: 10, letterSpacing: ".16em", textTransform: "uppercase", color: "#a08c7e",
+            }}>← All zones</button>
+            <div style={{ padding: 20, borderRadius: 16, background: T.panel, border: `1px solid ${T.edge}` }}>
+              <div style={{ fontFamily: SERIF, fontSize: 28, lineHeight: 1.05, color: "#f6ede5" }}>{currentZone.label}</div>
+              <div style={{
+                fontFamily: MONO, fontSize: 9.5, letterSpacing: ".14em", textTransform: "uppercase",
+                color: T.glow, marginTop: 8,
+              }}>
+                {zoneDone} of {currentZone.tasks.length} · {XP_VALUES.zoneTask} XP each, {XP_VALUES.zoneBonus} on completion
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+              {currentZone.tasks.map((task, i) => (
+                <Row key={i} theme={T} checked={!!zoneChecked[`${currentZone.id}-${i}`]}
+                     onToggle={() => toggleZone(currentZone.id, i)} label={task} />
+              ))}
+            </div>
+            {zoneDone === currentZone.tasks.length && (
+              <div style={{
+                textAlign: "center", padding: 14, borderRadius: 13, background: T.panel,
+                border: `1px solid ${T.edge}`, fontFamily: SERIF, fontSize: 19, color: T.glow,
+              }}>Zone complete. +{XP_VALUES.zoneBonus} XP.</div>
             )}
           </div>
         )}
 
         {/* MONTHLY */}
         {tab === "monthly" && (
-          <div>
-            <p style={{ color: "#7a6a5a", fontSize: 13, marginBottom: 4 }}>Big tasks — once a month is enough. +{XP_VALUES.monthly} XP each! 🌙</p>
-            <p style={{ color: "#9a8a7a", fontSize: 12, marginBottom: 16 }}>Resets at the start of each month. {Object.keys(monthlyChecked).filter(k=>monthlyChecked[k]).length}/{monthlyTasks.length} done this month.</p>
-            {monthlyTasks.map(t => <CheckItem key={t.id} checked={!!monthlyChecked[t.id]} onToggle={() => toggleMonthly(t.id)} emoji={t.emoji} label={t.label} />)}
+          <div style={listCol}>
+            <p style={{ ...intro, margin: 0 }}>Big tasks — once a month is enough. {XP_VALUES.monthly} XP each.</p>
+            <div style={{
+              marginBottom: 6, fontFamily: MONO, fontSize: 9.5, letterSpacing: ".14em",
+              textTransform: "uppercase", color: "#6d5c50",
+            }}>
+              {monthlyDone} of {monthlyTasks.length} done this month · resets on the 1st
+            </div>
+            {monthlyTasks.map(t => (
+              <Row key={t.id} theme={T} checked={!!monthlyChecked[t.id]} onToggle={() => toggleMonthly(t.id)}
+                   label={t.label} tag={`${t.effort} min`} />
+            ))}
           </div>
         )}
 
         {/* HISTORY */}
         {tab === "history" && (
-          <div>
-            <p style={{ color: "#7a6a5a", fontSize: 13, marginBottom: 16 }}>Your last 30 days. ⭐ zone · ✨ sweeps · 🌟 both!</p>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, marginBottom: 20 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingTop: 26 }}>
+            <div style={{
+              fontFamily: MONO, fontSize: 9.5, letterSpacing: ".16em",
+              textTransform: "uppercase", color: "#8a7566",
+            }}>Last 30 days · ◆ zone · ✦ zone and sweeps</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6 }}>
               {last30.map(date => {
-                const entry = history[date] || {};
-                const hasZone = !!entry.zone;
-                const hasSweeps = entry.sweeps > 0;
+                const e = history[date] || {};
+                const active = !!e.zone || e.sweeps > 0 || e.allDaily;
                 const isToday = date === TODAY;
-                const zoneInfo = zones.find(z => z.id === entry.zone);
-                const star = hasZone && hasSweeps ? "🌟" : hasZone ? "⭐" : hasSweeps ? "✨" : null;
+                const mark = e.zone && e.sweeps > 0 ? "✦" : e.zone ? "◆" : e.sweeps > 0 ? "·" : "";
                 return (
                   <div key={date} style={{
-                    background: isToday ? T.mid : "#fff",
-                    border: `1.5px solid ${isToday ? T.line : hasZone || hasSweeps ? "#a8c5a0" : "#e0d8ce"}`,
-                    borderRadius: 10, padding: "6px 4px", textAlign: "center",
-                    minHeight: 56, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1,
+                    aspectRatio: "1", borderRadius: 9, display: "flex", flexDirection: "column",
+                    alignItems: "center", justifyContent: "center", gap: 2,
+                    border: `1px solid ${isToday ? T.edge : active ? "rgba(232,133,58,.22)" : "rgba(255,255,255,.06)"}`,
+                    background: isToday ? T.panel : active ? "rgba(255,255,255,.035)" : "transparent",
                   }}>
-                    <div style={{ fontSize: 10, color: isToday ? T.bright : "#9a8a7a" }}>{parseInt(date.slice(8,10))}</div>
-                    {star ? <div style={{ fontSize: 16 }}>{star}</div> : <div style={{ fontSize: 16, color: "#d0c8be" }}>·</div>}
-                    {zoneInfo && <div style={{ fontSize: 12 }}>{zoneInfo.emoji}</div>}
-                    {hasSweeps && <div style={{ fontSize: 9, color: isToday ? T.glow : "#9a8a7a" }}>{entry.sweeps}⚡</div>}
+                    <span style={{ fontFamily: MONO, fontSize: 9, color: active || isToday ? "#a08c7e" : "#5d4e45" }}>
+                      {parseInt(date.slice(8, 10), 10)}
+                    </span>
+                    <span style={{ fontSize: 12, lineHeight: 1, color: e.zone ? T.glow : "#8a7566" }}>{mark}</span>
                   </div>
                 );
               })}
             </div>
-            <div style={{ background: "#fff", borderRadius: 12, padding: "16px", border: "1px solid #e0d8ce" }}>
-              <div style={{ fontSize: 13, fontWeight: "bold", color: "#3a3028", marginBottom: 10 }}>Last 30 days</div>
-              <div style={{ display: "flex", justifyContent: "space-around", textAlign: "center" }}>
-                {[["⭐","Zones",last30.filter(d=>history[d]?.zone).length],["⚡","Sweep days",last30.filter(d=>history[d]?.sweeps>0).length],["🌟","Full days",last30.filter(d=>history[d]?.zone&&history[d]?.sweeps>0).length]].map(([e,l,c]) => (
-                  <div key={l}>
-                    <div style={{ fontSize: 22 }}>{e}</div>
-                    <div style={{ fontSize: 20, fontWeight: "bold", color: "#3a3028" }}>{c}</div>
-                    <div style={{ fontSize: 11, color: "#9a8a7a" }}>{l}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         )}
 
-        <div style={{ textAlign: "center", marginTop: 24 }}>
-          <button onClick={resetToday} style={{ background: "none", border: "1px solid #c5b9ac", borderRadius: 8, padding: "6px 16px", color: "#9a8a7a", fontSize: 12, cursor: "pointer", fontFamily: "Georgia, serif" }}>Reset today</button>
-        </div>
+        <button onClick={resetToday} style={{
+          display: "block", margin: "34px auto 0", background: "none", border: "none", padding: 6,
+          cursor: "pointer", fontFamily: MONO, fontSize: 9, letterSpacing: ".18em",
+          textTransform: "uppercase", color: "#5d4e45",
+        }}>Reset today</button>
       </div>
+
+      {/* Level up / badge / boss */}
+      {popup && (
+        <div onClick={() => setPopup(null)} style={{
+          position: "fixed", inset: 0, background: "rgba(8,5,4,.72)", backdropFilter: "blur(3px)",
+          zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 28,
+        }}>
+          <div style={{
+            width: "100%", maxWidth: 300, textAlign: "center", padding: "34px 26px", borderRadius: 20,
+            background: "linear-gradient(160deg,#241811 0%,#17110f 100%)",
+            border: `1px solid ${T.edge}`, animation: "gr-rise .28s ease both",
+          }}>
+            {popup.lvl != null ? (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 100 }}>
+                <Familiar idx={popup.lvl} theme={T} px={8} />
+              </div>
+            ) : (
+              <div style={{ fontFamily: SERIF, fontSize: 34, lineHeight: 1, color: T.glow }}>{popup.mark}</div>
+            )}
+            <div style={{
+              fontFamily: MONO, fontSize: 9.5, letterSpacing: ".22em",
+              textTransform: "uppercase", color: "#c86b2a", marginTop: 14,
+            }}>{popup.kind}</div>
+            <div style={{ fontFamily: SERIF, fontSize: 26, lineHeight: 1.12, color: "#f6ede5", marginTop: 6 }}>{popup.title}</div>
+            <div style={{ fontSize: 13, lineHeight: 1.5, color: "#a08c7e", marginTop: 8, textWrap: "pretty" }}>{popup.desc}</div>
+            <div style={{
+              fontFamily: MONO, fontSize: 9, letterSpacing: ".18em",
+              textTransform: "uppercase", color: "#6d5c50", marginTop: 20,
+            }}>Tap to close</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -120,3 +120,9 @@ a:hover{color:var(--gold);}
 .panel{background:linear-gradient(160deg,rgba(46,29,22,.9) 0%,rgba(26,18,16,.9) 100%);
   border:1px solid var(--line);border-radius:var(--r);padding:22px;}
 button{font-family:var(--font-body);}
+
+/* ─── Cleaning Grimoire ──────────────────────────────────────── */
+/* The Familiar hatches in, then bobs; popups rise into place. */
+@keyframes gr-rise{0%{opacity:0;transform:translateY(6px);}100%{opacity:1;transform:translateY(0);}}
+@keyframes gr-bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-2px);}}
+@keyframes gr-hatch{0%{transform:scale(.4);opacity:0;}55%{transform:scale(1.18);opacity:1;}100%{transform:scale(1);opacity:1;}}
