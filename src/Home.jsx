@@ -12,7 +12,6 @@ const DAILY = [
 // Companion sites that live on their own — open in a new tab.
 const BEYOND = [
   { href: "https://witchlight-chronik.vercel.app/", name: "Witchlight Chronik", desc: "The Witchlight campaign chronicle." },
-  { href: "https://witchlight-hoard.vercel.app/",   name: "Witchlight Hoard",   desc: "Loot & lore for the Hoard table." },
   { href: "https://goldhort.vercel.app/",           name: "Goldhort",           desc: "The gold hoard, counted." },
   { href: "https://arcana-academy.vercel.app/",     name: "Arcana Academy",     desc: "Lessons in the arcane." },
   { href: "https://marginalia-wheat.vercel.app/",   name: "Marginalia",         desc: "Notes in the margins." },
