@@ -126,3 +126,95 @@ button{font-family:var(--font-body);}
 @keyframes gr-rise{0%{opacity:0;transform:translateY(6px);}100%{opacity:1;transform:translateY(0);}}
 @keyframes gr-bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-2px);}}
 @keyframes gr-hatch{0%{transform:scale(.4);opacity:0;}55%{transform:scale(1.18);opacity:1;}100%{transform:scale(1);opacity:1;}}
+
+/* ─── Ember Familiar ─────────────────────────────────────────── */
+/* Dashboard band: creature left, its line + the water log right. Compact on
+   phones so the Den stays in view; controls slide alongside on wide screens. */
+.ef-band{margin-top:clamp(18px,3vw,32px);display:grid;grid-template-columns:auto minmax(0,1fr);
+  grid-template-areas:"pet talk" "pet ctrl";align-items:center;column-gap:clamp(10px,2.5vw,24px);
+  row-gap:8px;padding:12px clamp(14px,2.5vw,24px) 12px clamp(8px,1.5vw,16px);border-radius:16px;
+  border:1px solid var(--line);
+  background:linear-gradient(160deg,rgba(46,29,22,.9) 0%,rgba(26,18,16,.9) 100%);
+  transition:border-color .4s ease,box-shadow .4s ease;}
+.ef-band[data-mood="smug"]{border-color:rgba(255,138,69,.45);box-shadow:0 18px 50px -30px rgba(255,110,40,.6);}
+@media (min-width:720px){
+  .ef-band{grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"pet talk ctrl";}
+}
+.ef-pet{grid-area:pet;display:flex;align-items:center;justify-content:center;
+  background:none;border:0;padding:0;margin:0;cursor:pointer;border-radius:14px;
+  -webkit-tap-highlight-color:transparent;}
+.ef-pet:focus-visible{outline:2px solid var(--ember);outline-offset:2px;}
+.ef-talk{grid-area:talk;margin:0;align-self:end;font-family:var(--font-display);font-style:italic;
+  font-size:clamp(16px,1.9vw,20px);line-height:1.3;color:#eadcd0;text-wrap:pretty;
+  min-height:2.6em;display:flex;align-items:flex-end;}
+.ef-band[data-mood="sulking"] .ef-talk{color:#bfae9f;}
+@media (min-width:720px){.ef-talk{align-self:center;min-height:0;}}
+.ef-ctrl{grid-area:ctrl;display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
+.ef-count{display:inline-flex;flex-direction:column;justify-content:center;gap:3px;min-height:44px;padding:0 4px;
+  color:var(--smoke);text-decoration:none;white-space:nowrap;}
+.ef-count:hover{color:var(--gold);}
+.ef-count-num{font-family:var(--font-display);font-size:28px;line-height:.9;color:var(--bone);white-space:nowrap;}
+.ef-count-goal{font-size:18px;color:var(--smoke);margin-left:1px;}
+.ef-count-of{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;}
+.ef-undo{display:inline-flex;align-items:center;min-height:44px;padding:0 10px;border-radius:999px;
+  background:transparent;border:1px solid var(--ash-edge);color:var(--bone);font-size:13px;cursor:pointer;
+  animation:ef-rise .25s ease;}
+.ef-undo[hidden]{display:none;}
+.ef-log{margin-left:auto;min-height:56px;padding:0 14px;border-radius:999px;
+  border:1px solid var(--ember);background:rgba(255,122,50,.14);color:var(--gold);
+  font-family:var(--font-mono);font-size:12.5px;font-weight:500;letter-spacing:.08em;
+  text-transform:uppercase;cursor:pointer;white-space:nowrap;
+  transition:background .15s ease,transform .1s ease;}
+.ef-log:hover{background:rgba(255,122,50,.24);}
+.ef-log:active{transform:scale(.97);}
+.ef-log:disabled{opacity:.45;cursor:default;}
+@media (min-width:720px){.ef-log{margin-left:4px;}}
+
+/* The creature. Transforms pivot on its coal bed (50,96 in the viewBox). */
+.ef-creature{display:block;width:clamp(60px,17vw,104px);height:auto;overflow:visible;}
+.ef-creature .ef-pop,.ef-creature .ef-bob,.ef-creature .ef-body,.ef-creature .ef-flame{
+  transform-box:view-box;transform-origin:50px 96px;}
+.ef-creature .ef-body{transition:transform .5s cubic-bezier(.3,1.4,.5,1),opacity .5s ease;}
+.ef-creature .ef-eyes{transform-box:view-box;transform-origin:50px 66px;}
+.ef-creature stop{transition:stop-color .5s ease;}
+.ef-s-core{stop-color:var(--gold);} .ef-s-mid{stop-color:var(--ember);} .ef-s-edge{stop-color:var(--ember-lo);}
+.ef-s-halo{stop-color:var(--ember);}
+.ef-halo{opacity:.4;transition:opacity .5s ease;}
+.ef-coal{fill:#2a1a14;}
+.ef-face{fill:#1a0f0a;}
+.ef-face .ef-line{fill:none;stroke:#1a0f0a;stroke-width:2.4;stroke-linecap:round;}
+.ef-face .ef-shine{fill:var(--gold);opacity:.9;}
+.ef-face .ef-blush{fill:#ff6a3d;opacity:.45;}
+
+/* Sulking: small, dim, leaning away. Still. */
+.ef-creature[data-mood="sulking"] .ef-body{transform:scale(.8) rotate(-7deg);opacity:.75;}
+.ef-creature[data-mood="sulking"] .ef-s-core{stop-color:#d27a3e;}
+.ef-creature[data-mood="sulking"] .ef-s-mid{stop-color:#9a5428;}
+.ef-creature[data-mood="sulking"] .ef-s-edge{stop-color:#4e2a1a;}
+.ef-creature[data-mood="sulking"] .ef-halo{opacity:.08;}
+.ef-creature[data-mood="sulking"] .ef-face .ef-line{stroke-width:2;}
+
+/* Content: steady glow, gentle bob, the odd blink. */
+.ef-creature[data-mood="content"] .ef-bob{animation:ef-bob 3.4s ease-in-out infinite;}
+.ef-creature[data-mood="content"] .ef-halo{animation:ef-breathe 3.4s ease-in-out infinite;}
+.ef-creature[data-mood="content"] .ef-eyes{animation:ef-blink 5.5s ease-in-out infinite 1.2s;}
+
+/* Smug: rounder, brighter, a self-satisfied flicker. */
+.ef-creature[data-mood="smug"] .ef-body{transform:scale(1.05);}
+.ef-creature[data-mood="smug"] .ef-s-core{stop-color:#ffe6b0;}
+.ef-creature[data-mood="smug"] .ef-s-mid{stop-color:#ffad5c;}
+.ef-creature[data-mood="smug"] .ef-s-edge{stop-color:var(--ember);}
+.ef-creature[data-mood="smug"] .ef-halo{opacity:.85;}
+.ef-creature[data-mood="smug"] .ef-flame{animation:ef-flicker 1.9s ease-in-out infinite;}
+.ef-creature[data-mood="smug"] .ef-bob{animation:ef-bob 2.6s ease-in-out infinite;}
+
+/* A little gulp whenever a glass is logged (or it's poked). */
+.ef-creature .ef-pop{animation:ef-pop .45s cubic-bezier(.2,1.4,.4,1);}
+
+@keyframes ef-rise{0%{opacity:0;transform:translateY(4px);}100%{opacity:1;transform:translateY(0);}}
+@keyframes ef-bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-4px);}}
+@keyframes ef-breathe{0%,100%{opacity:.4;}50%{opacity:.6;}}
+@keyframes ef-blink{0%,94%,100%{transform:scaleY(1);}97%{transform:scaleY(.1);}}
+@keyframes ef-flicker{0%,100%{transform:scale(1,1);}18%{transform:scale(1.03,.97);}
+  40%{transform:scale(.98,1.05);}55%{transform:scale(1.02,.99);}78%{transform:scale(.99,1.03);}}
+@keyframes ef-pop{0%{transform:scale(1);}35%{transform:scale(1.12,.9);}70%{transform:scale(.96,1.05);}100%{transform:scale(1);}}
