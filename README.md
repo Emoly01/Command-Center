@@ -28,7 +28,9 @@ One React/Vite app, tools as cards, Firebase-synced across phone + laptop.
     npm run dev
 
 ## What's live
-- 💧 Water — fully synced (the proof everything else copies).
+- 💧 Water — fully synced, configurable daily goal, per-day history
+  (`users/{uid}/tools/water` → `{ goal, days: { "YYYY-MM-DD": count } }`).
+- 🔥 Ember Familiar — dashboard band that reacts to today's water.
 - 🦊 The Den — fullscreen route stub, ready for the fox.
 - Cleaning / Command / Combat — routed placeholders; migrate one at a time.
 
@@ -36,3 +38,45 @@ One React/Vite app, tools as cards, Firebase-synced across phone + laptop.
 Build it as a component in `src/tools/`, use `useSyncedState("toolId", fallback)`
 for synced data (or plain `useState` for device-local), wrap in `<ToolFrame>`,
 add a `<Route>` in `main.jsx` and a card in `Home.jsx`.
+
+For anything filed per day, use `todayKey()` / `useToday()` from
+`src/lib/day.js`. It gives the **Europe/Berlin** date, so days flip at local
+midnight. (Older tools still use `new Date().toISOString()`, which is a UTC
+date and flips at 01:00/02:00 Berlin time.)
+
+## The Ember Familiar
+The little flame on the dashboard (`src/familiar/`). Its mood is **derived,
+never stored**: every render, it takes a list of *feeds* and picks a mood.
+
+    computeMood([{ source: "water", progress: 0.5 }])  // → { mood: "content", progress: 0.5 }
+
+- `progress` is how much of today's goal is done: 0 = nothing, 1 = goal hit.
+  Values above 1 are clamped. An optional `weight` (default 1) counts a feed
+  more or less.
+- Moods come from the weighted average. Below 25% it's **sulking**, from 25%
+  it's **content**, and at 100% it's **smug** (every feed at its goal).
+  The thresholds live in `src/familiar/mood.js`.
+- Lines are in `src/familiar/lines.js`. Edit freely: snarky, affectionate,
+  never shaming.
+
+Undo, the midnight reset and syncing across devices need nothing extra,
+because the mood is recomputed from whatever the source tools hold right now.
+
+### Feeding it from another module
+1. **Move the module to the Berlin day helper first.** If a feeder still keys
+   its days by UTC, the familiar will disagree with it between midnight and
+   02:00.
+2. Export a feed selector next to the module's data, the way `waterFeed()`
+   does in `src/lib/water.js`. It takes the module's state and returns
+   `{ source, progress, label }`. If the familiar needs the module's data
+   off its own page, also export a hook like `useWater()`.
+3. Add the feed to the `feeds` array in `src/familiar/FamiliarBand.jsx`.
+
+Water is the only feeder in v0.1.
+
+### Testing the day rollover
+In `npm run dev`, add `?day=YYYY-MM-DD` to any URL to pretend it's that day.
+It sticks for the tab; `?day=off` clears it. Production builds ignore it. To
+use it on a Vercel preview, set `VITE_ALLOW_DAY_OVERRIDE=true` for the
+**Preview** environment only. Logs you make under a fake day are real writes,
+filed under that date.
