@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import FamiliarBand from "./familiar/FamiliarBand";
 
 // Routed tools that live inside the Hearth.
 const DAILY = [
-  { to: "/water",    name: "Water",          desc: "Two glasses. That's the deal." },
+  { to: "/water",    name: "Water",          desc: "One tap per glass. The ember's watching." },
   { to: "/cleaning", name: "Cleaning",       desc: "One zone at a time. XP & streaks." },
   { to: "/command",  name: "Command Center", desc: "The day, at a glance." },
   { to: "/movement", name: "Movement Nudge", desc: "Up you get. Every 45." },
@@ -56,6 +57,8 @@ export default function Home() {
           <span className="hearth-subline">{subline}</span>
         </div>
       </header>
+
+      <FamiliarBand />
 
       <Link to="/fox" className="den">
         <div className="den-inner">
