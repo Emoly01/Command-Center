@@ -44,7 +44,7 @@ export default function Water() {
 
   // One glass per goal slot, plus any extras beyond the goal.
   const slots = Math.max(goal, count);
-  const big = slots <= 4;
+  const big = slots <= 3;
 
   const pill = {
     background: "transparent", border: "1px solid var(--ash-edge)", color: "var(--smoke)",
