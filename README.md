@@ -55,6 +55,8 @@ served from `firebaseapp.com` and the browser partitions storage).
 - 💧 Water — fully synced, configurable daily goal, per-day history
   (`users/{uid}/tools/water` → `{ goal, days: { "YYYY-MM-DD": count } }`).
 - 🔥 Ember Familiar — dashboard band that reacts to today's water.
+- 🧶 Stash Ledger — craft supply inventory with photos, eyedropper colors
+  and "do I already own this?" color search (`/stash`, see below).
 - 🦊 The Den — fullscreen route stub, ready for the fox.
 - Cleaning / Command / Combat — routed placeholders; migrate one at a time.
 
@@ -63,6 +65,36 @@ Firestore runs with a persistent local cache (`src/lib/firebase.js`): anything
 a device has loaded stays readable with no signal, and writes made offline
 sync when the connection comes back. Don't `await` a write before moving on
 in the UI: offline, the promise only resolves once the server has it.
+
+## Stash Ledger
+Craft supplies (`src/tools/Stash.jsx`, screens in `src/tools/stash/`, data in
+`src/lib/stash.js`). Too many items and photos for one doc, so it doesn't use
+the one-doc `useSyncedState` pattern (except for its settings):
+
+    users/{uid}/tools/stash           { categories: [{ id, name, units }] }
+    users/{uid}/stash/{itemId}        one item (shape documented in stash.js)
+    users/{uid}/stashPhotos/{itemId}  { full: JPEG data URL }
+
+- **Photos live in Firestore**, not Cloud Storage. This project has no
+  Storage bucket, and since Feb 2026 Storage needs the Blaze plan. Each photo
+  is shrunk in the browser to a 1280px JPEG (≤700 KB, usually far less) plus a
+  192px square thumbnail kept on the item. Photos are cached offline like any
+  other data, and deleting an item deletes its photo in the same batch.
+- **Colors** are stored as `#RRGGBB`. The eyedropper samples a 2048px copy of
+  the original photo, never the stored JPEG, and averages a small patch.
+  Search ranks by CIEDE2000 (`src/lib/color.js`): under 3 is "Twin", under 6
+  "Close", under 12 "Family".
+- **Item IDs** are Firestore auto IDs and never change, so other tools can
+  link to them.
+- **For other tools:** `getStashPalette({ categoryIds })` returns owned items
+  with `{ id, name, qty, unit, colors: [{ hex, name, lab }] }`. Rug-ify should
+  start there.
+- **Rules:** none needed. The `users/{uid}/{document=**}` rule above already
+  covers the new collections.
+- **Offline caveat:** data and photos are cached once loaded, but the app
+  itself has no service worker. Open the Hearth before you lose signal, and
+  it keeps working in the basement. A cold start with zero signal won't load
+  the page.
 
 ## Adding a tool
 Build it as a component in `src/tools/`, use `useSyncedState("toolId", fallback)`
