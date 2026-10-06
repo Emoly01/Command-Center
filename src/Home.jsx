@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import FamiliarBand from "./familiar/FamiliarBand";
+import { AccountBand, AccountNote } from "./AccountBand";
 
 // Routed tools that live inside the Hearth.
 const DAILY = [
@@ -8,6 +9,11 @@ const DAILY = [
   { to: "/cleaning", name: "Cleaning",       desc: "One zone at a time. XP & streaks." },
   { to: "/command",  name: "Command Center", desc: "The day, at a glance." },
   { to: "/movement", name: "Movement Nudge", desc: "Up you get. Every 45." },
+];
+
+// Craft tools: what's in the cupboard, and (later) what to make with it.
+const WORKSHOP = [
+  { to: "/stash", name: "Stash Ledger", desc: "Do I already own this? Yes. Usually." },
 ];
 
 // Companion sites that live on their own — open in a new tab.
@@ -20,7 +26,7 @@ const BEYOND = [
   { href: "https://tarot-theta-seven.vercel.app/",  name: "Tarot",              desc: "Draw a card." },
 ];
 
-const ROOMS = DAILY.length + BEYOND.length + 1; // +1 for the Den
+const ROOMS = DAILY.length + WORKSHOP.length + BEYOND.length + 1; // +1 for the Den
 const pad = (i) => String(i).padStart(2, "0");
 
 function greetingFor(h) {
@@ -60,6 +66,8 @@ export default function Home() {
 
       <FamiliarBand />
 
+      <AccountBand />
+
       <Link to="/fox" className="den">
         <div className="den-inner">
           <div className="den-copy">
@@ -93,6 +101,22 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="hearth-section">
+        <div className="section-head">
+          <h2>The workshop</h2>
+          <i aria-hidden="true" />
+        </div>
+        <div className="grid grid-workshop">
+          {WORKSHOP.map((t, i) => (
+            <Link key={t.to} to={t.to} className="card">
+              <span className="card-num">{pad(i + DAILY.length)}</span>
+              <span className="card-name">{t.name}</span>
+              <span className="card-desc">{t.desc}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       <section className="hearth-section section-beyond">
         <div className="section-head">
           <h2>Beyond the hearth</h2>
@@ -107,7 +131,7 @@ export default function Home() {
               rel="noopener noreferrer"
               className="row"
             >
-              <span className="row-num">{pad(i + DAILY.length)}</span>
+              <span className="row-num">{pad(i + DAILY.length + WORKSHOP.length)}</span>
               <span className="row-copy">
                 <span className="row-name">{s.name}</span>
                 <span className="row-desc">{s.desc}</span>
@@ -119,6 +143,7 @@ export default function Home() {
 
       <footer className="hearth-foot">
         <span>Everything in one fire</span>
+        <AccountNote />
         <span>{ROOMS} rooms</span>
       </footer>
     </>
