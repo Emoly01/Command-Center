@@ -121,6 +121,22 @@ a:hover{color:var(--gold);}
   border:1px solid var(--line);border-radius:var(--r);padding:22px;}
 button{font-family:var(--font-body);}
 
+/* ─── Account band ───────────────────────────────────────────── */
+/* Shown on Home while the browser is still anonymous. */
+.acct-band{margin-top:14px;display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;
+  padding:14px clamp(14px,2.5vw,24px);border-radius:16px;border:1px dashed rgba(255,138,69,.45);
+  background:rgba(30,21,18,.7);}
+.acct-done{border-style:solid;border-color:var(--line);}
+.acct-copy{flex:1 1 280px;display:flex;flex-direction:column;gap:6px;}
+.acct-copy p{margin:0;font-size:14px;line-height:1.55;color:#d8c6b8;text-wrap:pretty;}
+.acct-eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--ember);}
+.acct-err{color:#f0a08f!important;font-size:13px!important;}
+.acct-btn{min-height:48px;padding:0 20px;border-radius:999px;border:1px solid var(--ember);
+  background:rgba(255,122,50,.14);color:var(--gold);font-family:var(--font-mono);font-size:12px;
+  letter-spacing:.1em;text-transform:uppercase;cursor:pointer;}
+.acct-btn:hover{background:rgba(255,122,50,.24);}
+.acct-btn:disabled{opacity:.5;cursor:default;}
+
 /* ─── Cleaning Grimoire ──────────────────────────────────────── */
 /* The Familiar hatches in, then bobs; popups rise into place. */
 @keyframes gr-rise{0%{opacity:0;transform:translateY(6px);}100%{opacity:1;transform:translateY(0);}}

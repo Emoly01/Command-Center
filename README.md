@@ -1,12 +1,18 @@
 # The Hearth — Emily's tool hub
 
-One React/Vite app, tools as cards, Firebase-synced across phone + laptop.
+One React/Vite app, tools as cards, Firebase-synced across phone + laptop
+(once the Hearth is bound to Google, see below).
 
 ## One-time setup
 1. Firebase Console → project `dnd-tools-1dd87` → Project settings →
    Your apps → Web app → copy the SDK config values.
 2. Paste them into `src/lib/firebase.js` (replace every `REPLACE_ME`).
-3. Firebase Console → Build → Authentication → enable **Anonymous**.
+3. Firebase Console → Build → Authentication → Sign-in method → enable
+   **Anonymous** and **Google**.
+   Then Authentication → Settings → **Authorized domains** → add every address
+   the Hearth runs on: the production domain, and each Vercel preview you want
+   to sign in from (the per-branch alias, e.g.
+   `<project>-git-feature-stash-ledger-<team>.vercel.app`). No wildcards.
 4. Firebase Console → Firestore → Rules → paste:
 
     rules_version = '2';
@@ -17,6 +23,24 @@ One React/Vite app, tools as cards, Firebase-synced across phone + laptop.
         }
       }
     }
+
+## Accounts: anonymous first, then bound to Google
+Every browser starts out signed in anonymously. That identity lives only in
+the browser's storage: clearing site data loses it for good (iOS Safari also
+wipes it after 7 days without a visit, unless the Hearth is on the home
+screen), and each device gets its own, so devices don't share data.
+
+The **Bind to Google** band on Home fixes both:
+- **First device** (the one with the data you care about): the Google account
+  is *linked* to the existing anonymous uid. The uid doesn't change, so every
+  doc under `users/{uid}` stays exactly where it is.
+- **Any other device**: Google is already bound, so the app signs in to that
+  account instead. Before switching, it copies this browser's `tools/*` docs
+  that the account **doesn't have yet**, and never overwrites. The old
+  anonymous copies are left untouched in Firestore.
+
+Sign-in uses a popup, not a redirect (redirects break when the app isn't
+served from `firebaseapp.com` and the browser partitions storage).
 
 ## Deploy (your usual flow)
 - New GitHub repo → upload all these files.

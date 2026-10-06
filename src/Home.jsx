@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import FamiliarBand from "./familiar/FamiliarBand";
+import { AccountBand, AccountNote } from "./AccountBand";
 
 // Routed tools that live inside the Hearth.
 const DAILY = [
@@ -59,6 +60,8 @@ export default function Home() {
       </header>
 
       <FamiliarBand />
+
+      <AccountBand />
 
       <Link to="/fox" className="den">
         <div className="den-inner">
@@ -119,6 +122,7 @@ export default function Home() {
 
       <footer className="hearth-foot">
         <span>Everything in one fire</span>
+        <AccountNote />
         <span>{ROOMS} rooms</span>
       </footer>
     </>
