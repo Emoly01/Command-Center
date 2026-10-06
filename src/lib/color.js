@@ -46,8 +46,8 @@ export function hexToLab(hex) {
   return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
 }
 
-// CIEDE2000 colour difference between two Lab colours.
-// Roughly: < 1 invisible, ~2 barely, ~5 clearly different up close, 10+ another colour.
+// CIEDE2000 color difference between two Lab colors.
+// Roughly: < 1 invisible, ~2 barely, ~5 clearly different up close, 10+ another color.
 export function deltaE(lab1, lab2) {
   const [L1, a1, b1] = lab1;
   const [L2, a2, b2] = lab2;
@@ -140,5 +140,5 @@ export function samplePatch(ctx, x, y, radius) {
   return rgbToHex(fromLinear(r / n), fromLinear(g / n), fromLinear(b / n));
 }
 
-// Text colour that stays readable on top of a swatch.
+// Text color that stays readable on top of a swatch.
 export const inkOn = (hex) => (hexToLab(hex)[0] > 62 ? "#1a0f0a" : "#f6ede5");

@@ -9,6 +9,7 @@ import Movement from "./tools/Movement";
 import Fox from "./tools/Fox";
 import Cleaning from "./tools/Cleaning";
 import CommandCenter from "./tools/CommandCenter";
+import Stash from "./tools/Stash";
 
 function Shell({ children, wide }) {
   return (
@@ -30,6 +31,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route path="/" element={<Shell wide><Home /></Shell>} />
         <Route path="/water" element={<Shell><Water /></Shell>} />
         <Route path="/movement" element={<Shell><Movement /></Shell>} />
+        <Route path="/stash/*" element={<Shell><Stash /></Shell>} />
         <Route path="*" element={<Shell wide><Home /></Shell>} />
       </Routes>
     </BrowserRouter>

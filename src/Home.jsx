@@ -11,6 +11,11 @@ const DAILY = [
   { to: "/movement", name: "Movement Nudge", desc: "Up you get. Every 45." },
 ];
 
+// Craft tools: what's in the cupboard, and (later) what to make with it.
+const WORKSHOP = [
+  { to: "/stash", name: "Stash Ledger", desc: "Do I already own this? Yes. Usually." },
+];
+
 // Companion sites that live on their own — open in a new tab.
 const BEYOND = [
   { href: "https://witchlight-chronik.vercel.app/", name: "Witchlight Chronik", desc: "The Witchlight campaign chronicle." },
@@ -21,7 +26,7 @@ const BEYOND = [
   { href: "https://tarot-theta-seven.vercel.app/",  name: "Tarot",              desc: "Draw a card." },
 ];
 
-const ROOMS = DAILY.length + BEYOND.length + 1; // +1 for the Den
+const ROOMS = DAILY.length + WORKSHOP.length + BEYOND.length + 1; // +1 for the Den
 const pad = (i) => String(i).padStart(2, "0");
 
 function greetingFor(h) {
@@ -96,6 +101,22 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="hearth-section">
+        <div className="section-head">
+          <h2>The workshop</h2>
+          <i aria-hidden="true" />
+        </div>
+        <div className="grid grid-workshop">
+          {WORKSHOP.map((t, i) => (
+            <Link key={t.to} to={t.to} className="card">
+              <span className="card-num">{pad(i + DAILY.length)}</span>
+              <span className="card-name">{t.name}</span>
+              <span className="card-desc">{t.desc}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       <section className="hearth-section section-beyond">
         <div className="section-head">
           <h2>Beyond the hearth</h2>
@@ -110,7 +131,7 @@ export default function Home() {
               rel="noopener noreferrer"
               className="row"
             >
-              <span className="row-num">{pad(i + DAILY.length)}</span>
+              <span className="row-num">{pad(i + DAILY.length + WORKSHOP.length)}</span>
               <span className="row-copy">
                 <span className="row-name">{s.name}</span>
                 <span className="row-desc">{s.desc}</span>

@@ -206,10 +206,10 @@ export async function deleteItem(id) {
   settle(batch.commit());
 }
 
-// ── Colour ─────────────────────────────────────────────────────────────
+// ── Color ─────────────────────────────────────────────────────────────
 
-// Items closest to a colour, nearest first. An item's distance is its
-// closest colour, so one strand of a variegated yarn is enough to match.
+// Items closest to a color, nearest first. An item's distance is its
+// closest color, so one strand of a variegated yarn is enough to match.
 // → [{ item, color, distance, band }]
 export function rankByColor(items, hex, limit = 8) {
   const target = hexToLab(hex);
@@ -226,7 +226,7 @@ export function rankByColor(items, hex, limit = 8) {
   return out.slice(0, limit).map((r) => ({ ...r, band: matchBand(r.distance) }));
 }
 
-// For Rug-ify and friends: which colours do I own, and how much of each?
+// For Rug-ify and friends: which colors do I own, and how much of each?
 // Works offline from the device cache.
 //   getStashPalette({ categoryIds: ["tufting"] })
 //   → [{ id, name, categoryId, qty, unit, colors: [{ hex, name, lab }] }]
