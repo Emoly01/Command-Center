@@ -1,11 +1,14 @@
-import { useState } from "react";
-import { useAccount, takeFlash } from "./lib/account";
+import { useEffect, useState } from "react";
+import { useAccount, peekFlash, clearFlash } from "./lib/account";
 
 // Home-page nudge while this browser is still anonymous, plus the one-shot
 // note after a second device signs in. Quiet once bound.
 export function AccountBand() {
   const { user, bind, busy, error } = useAccount();
-  const [flash] = useState(takeFlash);
+  const [flash] = useState(peekFlash);
+  useEffect(() => {
+    if (flash) clearFlash();
+  }, [flash]);
 
   if (flash) {
     return (

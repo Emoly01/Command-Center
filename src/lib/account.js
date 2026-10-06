@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { onAuthStateChanged } from "firebase/auth";
+import { onIdTokenChanged } from "firebase/auth";
 import { auth, linkGoogle } from "./firebase";
 
 const FLASH_KEY = "hearth:accountFlash";
@@ -7,14 +7,14 @@ const FLASH_KEY = "hearth:accountFlash";
 const snapshot = (u) =>
   u ? { uid: u.uid, anonymous: u.isAnonymous, email: u.email || null } : null;
 
-// Who's signed in right now. Linking keeps the same user object (and doesn't
-// fire onAuthStateChanged), so bind() refreshes the snapshot itself.
+// Who's signed in right now. Linking keeps the same user, so
+// onAuthStateChanged stays quiet; the token does change, so listen to that.
 export function useAccount() {
   const [user, setUser] = useState(() => snapshot(auth.currentUser));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => onAuthStateChanged(auth, (u) => setUser(snapshot(u))), []);
+  useEffect(() => onIdTokenChanged(auth, (u) => setUser(snapshot(u))), []);
 
   const bind = useCallback(async () => {
     setBusy(true);
@@ -39,13 +39,20 @@ export function useAccount() {
 }
 
 // One-shot message that survives the reload after switching accounts.
-export function takeFlash() {
+// Read it with peekFlash() and clear it once shown, from an effect: render-time
+// code may run twice (StrictMode), and reading must not consume it.
+export function peekFlash() {
   try {
-    const m = sessionStorage.getItem(FLASH_KEY);
-    if (m) sessionStorage.removeItem(FLASH_KEY);
-    return m;
+    return sessionStorage.getItem(FLASH_KEY);
   } catch {
     return null;
+  }
+}
+export function clearFlash() {
+  try {
+    sessionStorage.removeItem(FLASH_KEY);
+  } catch {
+    /* nothing to clear */
   }
 }
 function writeFlash(m) {
