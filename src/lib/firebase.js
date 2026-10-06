@@ -62,7 +62,8 @@ onAuthStateChanged(auth, (user) => {
 
 // Per-user collections a second device brings along when it signs in to an
 // account that already exists. See linkGoogle.
-const CARRY_OVER = ["tools"];
+// Stash items have random IDs, so copying them can never collide.
+const CARRY_OVER = ["tools", "stash", "stashPhotos"];
 
 // Bind this browser's identity to Google.
 //

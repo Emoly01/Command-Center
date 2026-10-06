@@ -35,7 +35,7 @@ The **Bind to Google** band on Home fixes both:
   is *linked* to the existing anonymous uid. The uid doesn't change, so every
   doc under `users/{uid}` stays exactly where it is.
 - **Any other device**: Google is already bound, so the app signs in to that
-  account instead. Before switching, it copies this browser's `tools/*` docs
+  account instead. Before switching, it copies this browser's docs (`tools/*` and the stash)
   that the account **doesn't have yet**, and never overwrites. The old
   anonymous copies are left untouched in Firestore.
 
