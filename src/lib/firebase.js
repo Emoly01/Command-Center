@@ -8,7 +8,9 @@ import {
   signInWithCredential,
 } from "firebase/auth";
 import {
-  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   collection,
   doc,
   getDoc,
@@ -32,7 +34,13 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+// Persistent cache: everything already loaded stays readable with no signal,
+// and writes made offline queue up and sync when the connection's back.
+// Shared across tabs. If IndexedDB isn't available (some private modes), the
+// SDK falls back to the in-memory cache on its own.
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+});
 export const auth = getAuth(app);
 
 // Resolves to the signed-in uid. Every tool waits on this so reads/writes

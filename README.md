@@ -58,6 +58,12 @@ served from `firebaseapp.com` and the browser partitions storage).
 - 🦊 The Den — fullscreen route stub, ready for the fox.
 - Cleaning / Command / Combat — routed placeholders; migrate one at a time.
 
+## Offline
+Firestore runs with a persistent local cache (`src/lib/firebase.js`): anything
+a device has loaded stays readable with no signal, and writes made offline
+sync when the connection comes back. Don't `await` a write before moving on
+in the UI: offline, the promise only resolves once the server has it.
+
 ## Adding a tool
 Build it as a component in `src/tools/`, use `useSyncedState("toolId", fallback)`
 for synced data (or plain `useState` for device-local), wrap in `<ToolFrame>`,
