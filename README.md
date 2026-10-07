@@ -57,6 +57,8 @@ served from `firebaseapp.com` and the browser partitions storage).
 - 🔥 Ember Familiar — dashboard band that reacts to today's water.
 - 🧶 Stash Ledger — craft supply inventory with photos, eyedropper colors
   and "do I already own this?" color search (`/stash`, see below).
+- 🪡 Rug-ify — photo → tuftable pattern in yarn from the stash, with a
+  projector mode and yarn estimate (`/rugify`, see below).
 - 🦊 The Den — fullscreen route stub, ready for the fox.
 - Cleaning / Command / Combat — routed placeholders; migrate one at a time.
 
@@ -99,6 +101,51 @@ the one-doc `useSyncedState` pattern (except for its settings):
   itself has no service worker. Open the Hearth before you lose signal, and
   it keeps working in the basement. A cold start with zero signal won't load
   the page.
+
+## Rug-ify
+Turns a photo into a tufting pattern using only stash yarn
+(`src/tools/Rugify.jsx`, screens in `src/tools/rugify/`, engine in
+`src/lib/rugify/`, data in `src/lib/rugs.js`).
+
+    users/{uid}/tools/rugify          settings: g/m², waste %, grams per unit, defaults
+    users/{uid}/rugs/{id}             project: crop, size, palette, settings, thumb, locked
+    users/{uid}/rugSources/{id}       { full: JPEG data URL }, the uncropped photo
+
+The pipeline runs in a Web Worker (`rugify.worker.js`), all of it our own
+code, with no libraries:
+
+1. **Grid** (`grid.js`): the crop is averaged per cell (default 4 mm) in
+   linear light and converted to Lab. The photo's resolution doesn't matter
+   past this point. Then a bilateral filter in Lab removes grain but keeps
+   edges.
+2. **Palette** (`palette.js`): CIEDE2000 to each allowed yarn. "Best N"
+   adds whichever yarn cuts the error most, then tries swaps. Each cell
+   takes its nearest yarn. **No dithering.**
+3. **Cleanup** (`cleanup.js`): majority-vote smoothing, then an opening at
+   the minimum detail size (thin bits removed and refilled), then a merge of
+   every region below the minimum area into its closest-coloured neighbour.
+   The merge always runs last, so no region is ever below the minimum.
+4. **Tracing** (`trace.js`): each border between two regions is traced once
+   and smoothed once, and both sides share it: no doubled lines, no gaps.
+   Numbers go on each region's deepest cell.
+5. **Rendering** (`render.js`): one SVG builder for the preview, the outline,
+   the projector and the exports, so they can't disagree.
+
+**Locking** stores the final grid (run-length encoded, `codec.js`) plus the
+legend and a checksum in the project doc. A locked rug is drawn only from
+that grid, and everything that decides regions and number positions is
+integer-only, so it numbers the same on every device and survives any
+future algorithm change. "Unlock & edit" goes back to regenerating.
+
+**Size guards:** source photos are shrunk to fit under 700 KB (never below
+800px); if they can't fit, you get a message, not a failed write. Project
+docs are checked against 900 KB before every write.
+
+**Yarn estimate:** area × g/m² × (1 + waste). There is deliberately no
+default g/m²: calibrate it from a tufted test swatch in Rug-ify settings.
+Yarn counted in cones/skeins/m needs a "grams per unit" once.
+
+Rules: none needed; the `users/{uid}/{document=**}` rule covers it.
 
 ## Adding a tool
 Build it as a component in `src/tools/`, use `useSyncedState("toolId", fallback)`

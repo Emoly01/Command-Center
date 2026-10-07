@@ -10,6 +10,8 @@ import Fox from "./tools/Fox";
 import Cleaning from "./tools/Cleaning";
 import CommandCenter from "./tools/CommandCenter";
 import Stash from "./tools/Stash";
+import Rugify from "./tools/Rugify";
+import RugProjector from "./tools/rugify/Projector";
 
 function Shell({ children, wide }) {
   return (
@@ -24,14 +26,16 @@ ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
       <Routes>
-        {/* Fox, Cleaning and Command Center are fullscreen — no shell wrapper */}
+        {/* Fox, Cleaning, Command Center and the rug projector are fullscreen — no shell wrapper */}
         <Route path="/fox" element={<Fox />} />
         <Route path="/cleaning" element={<Cleaning />} />
         <Route path="/command" element={<CommandCenter />} />
+        <Route path="/rugify/:id/project" element={<RugProjector />} />
         <Route path="/" element={<Shell wide><Home /></Shell>} />
         <Route path="/water" element={<Shell><Water /></Shell>} />
         <Route path="/movement" element={<Shell><Movement /></Shell>} />
         <Route path="/stash/*" element={<Shell><Stash /></Shell>} />
+        <Route path="/rugify/*" element={<Shell><Rugify /></Shell>} />
         <Route path="*" element={<Shell wide><Home /></Shell>} />
       </Routes>
     </BrowserRouter>

@@ -14,6 +14,7 @@ const DAILY = [
 // Craft tools: what's in the cupboard, and (later) what to make with it.
 const WORKSHOP = [
   { to: "/stash", name: "Stash Ledger", desc: "Do I already own this? Yes. Usually." },
+  { to: "/rugify", name: "Rug-ify", desc: "Photo in, tuftable pattern out. Only yarn you own." },
 ];
 
 // Companion sites that live on their own — open in a new tab.
