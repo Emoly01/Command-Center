@@ -142,3 +142,65 @@ export function samplePatch(ctx, x, y, radius) {
 
 // Text color that stays readable on top of a swatch.
 export const inkOn = (hex) => (hexToLab(hex)[0] > 62 ? "#1a0f0a" : "#f6ede5");
+
+// ── Color families ─────────────────────────────────────────────────────
+// Loose buckets for browsing ("all the greenish ones"). Hue comes from HSV,
+// because that's where people's color names line up (blue sits at 240, not
+// at Lab's skewed ~300). Lightness and chroma come from Lab, because that's
+// what the eye sees. Ranges overlap on purpose: teal is greenish *and*
+// blueish, marigold is yellowish *and* orangeish, so it shows up in both.
+export const FAMILIES = [
+  { key: "red", label: "Reds", dot: "#C8312F" },
+  { key: "orange", label: "Oranges", dot: "#E8742A" },
+  { key: "yellow", label: "Yellows", dot: "#F2C14E" },
+  { key: "green", label: "Greens", dot: "#5E8C3A" },
+  { key: "blue", label: "Blues", dot: "#3366B8" },
+  { key: "purple", label: "Purples", dot: "#7A4FB0" },
+  { key: "pink", label: "Pinks", dot: "#E06A9A" },
+  { key: "brown", label: "Browns", dot: "#7B4A2A" },
+  { key: "neutral", label: "Neutrals", dot: "#B8B0A6" },
+];
+
+// HSV hue in degrees (0–360), or null for pure greys.
+export function hueOf(hex) {
+  const [r, g, b] = hexToRgb(hex);
+  const max = Math.max(r, g, b);
+  const d = max - Math.min(r, g, b);
+  if (!d) return null;
+  let h;
+  if (max === r) h = ((g - b) / d) % 6;
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  h *= 60;
+  return h < 0 ? h + 360 : h;
+}
+
+const inHue = (h, from, to) => (from <= to ? h >= from && h < to : h >= from || h < to);
+
+// "#RRGGBB" → the family keys it belongs to (usually one, sometimes two).
+export function familiesOf(hex) {
+  const [L, a, b] = hexToLab(hex);
+  const C = Math.hypot(a, b);
+  const h = hueOf(hex);
+  const out = [];
+  if (C < 14) out.push("neutral");
+  if (C < 10 || h == null) return out;
+  if (inHue(h, 340, 18) && L <= 75) out.push("red");
+  if (inHue(h, 12, 45)) out.push("orange");
+  if (inHue(h, 40, 72)) out.push("yellow");
+  if (inHue(h, 56, 182)) out.push("green");
+  if (inHue(h, 168, 262)) out.push("blue");
+  if (inHue(h, 255, 310)) out.push("purple");
+  if (inHue(h, 290, 350) || (inHue(h, 340, 18) && L > 68)) out.push("pink");
+  if (inHue(h, 8, 60) && L < 48) out.push("brown");
+  return out;
+}
+
+// Rainbow order for sorting: reds → oranges → … → pinks, then neutrals
+// from light to dark. Returns a number to sort ascending.
+export function rainbowKey(hex) {
+  const [L, a, b] = hexToLab(hex);
+  const h = hueOf(hex);
+  if (h == null || Math.hypot(a, b) < 10) return 1000 + (100 - L);
+  return ((h + 20) % 360) + (100 - L) / 1000;
+}

@@ -84,6 +84,10 @@ the one-doc `useSyncedState` pattern (except for its settings):
   the original photo, never the stored JPEG, and averages a small patch.
   Search ranks by CIEDE2000 (`src/lib/color.js`): under 3 is "Twin", under 6
   "Close", under 12 "Family".
+- **Color families** (Reds, Greens, Blues…) are worked out from the hex on
+  the fly, never stored: `familiesOf()` in `color.js`. The ranges overlap on
+  purpose (teal is a green *and* a blue), and a variegated yarn counts under
+  every strand's family. "Rainbow" sorts the list by hue, then neutrals.
 - **Item IDs** are Firestore auto IDs and never change, so other tools can
   link to them.
 - **For other tools:** `getStashPalette({ categoryIds })` returns owned items
