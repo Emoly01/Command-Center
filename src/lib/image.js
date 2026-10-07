@@ -5,7 +5,10 @@
 export const FULL_EDGE = 1280; // longest side of the stored photo
 export const THUMB_EDGE = 192; // square centre crop, shown at 64px
 export const SAMPLE_EDGE = 2048; // the eyedropper reads this, never a JPEG
-const FULL_MAX_CHARS = 700_000;
+// A data URL is ASCII, so its length is its size in bytes. 700 KB leaves
+// headroom under Firestore's 1 MiB per-doc limit for the doc's other fields.
+export const DOC_IMAGE_MAX_CHARS = 700_000;
+const FULL_MAX_CHARS = DOC_IMAGE_MAX_CHARS;
 const THUMB_MAX_CHARS = 40_000;
 const QUALITIES = [0.82, 0.72, 0.62, 0.52];
 const MATTE = "#1a1210"; // what transparent PNG areas become in a JPEG
@@ -60,29 +63,52 @@ function squareCanvas(img, edge) {
   return c;
 }
 
-// Lower the quality until it fits, then shrink and try again.
-function toJpeg(canvas, maxChars) {
+// Lower the quality until it fits, then shrink and try again, but never
+// below minEdge on the long side. → data URL, or null if it can't fit.
+function toJpeg(canvas, maxChars, minEdge = 0) {
   for (const q of QUALITIES) {
     const url = canvas.toDataURL("image/jpeg", q);
     if (url.length <= maxChars) return url;
   }
-  return toJpeg(scaledCanvas(canvas, Math.max(canvas.width, canvas.height) * 0.75, { matte: true }), maxChars);
+  const next = Math.floor(Math.max(canvas.width, canvas.height) * 0.75);
+  if (next < minEdge || next < 16) return null;
+  return toJpeg(scaledCanvas(canvas, next, { matte: true }), maxChars, minEdge);
 }
+
+export class PhotoTooBigError extends Error {}
 
 // A new photo, ready for the eyedropper and for saving.
 // → { url, revoke, sample, full, thumb }
 //   url:    show this (the original, revoke() when done)
 //   sample: canvas the eyedropper reads
 //   full / thumb: JPEG data URLs to store (skipped with { encode: false })
-export async function preparePhoto(src, { encode = true } = {}) {
+//
+// Options: fullEdge (long side of `full`), fullMaxChars (its size cap) and
+// minEdge (the smallest long side `full` may shrink to). If it can't fit,
+// this throws PhotoTooBigError with a message fit to show as-is.
+export async function preparePhoto(
+  src,
+  { encode = true, fullEdge = FULL_EDGE, fullMaxChars = FULL_MAX_CHARS, minEdge = 320 } = {}
+) {
   const { img, url, revoke } = await loadImage(src);
   const sample = scaledCanvas(img, SAMPLE_EDGE, { readable: true });
   if (!encode) return { url, revoke, sample };
+  const fullCanvas = scaledCanvas(img, fullEdge, { matte: true });
+  const full = toJpeg(fullCanvas, fullMaxChars, minEdge);
+  if (!full) {
+    revoke();
+    throw new PhotoTooBigError(
+      `This image won't squeeze under ${Math.round(fullMaxChars / 1000)} KB without dropping below ` +
+        `${minEdge}px, so I didn't save it. Try a smaller or simpler image, or crop it first.`
+    );
+  }
   return {
     url,
     revoke,
     sample,
-    full: toJpeg(scaledCanvas(img, FULL_EDGE, { matte: true }), FULL_MAX_CHARS),
+    full,
+    width: fullCanvas.width,
+    height: fullCanvas.height,
     thumb: toJpeg(squareCanvas(img, THUMB_EDGE), THUMB_MAX_CHARS),
   };
 }
