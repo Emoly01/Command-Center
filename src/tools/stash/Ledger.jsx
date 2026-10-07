@@ -2,12 +2,26 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import ToolFrame from "../../ToolFrame";
 import { setQty, setUsedUp } from "../../lib/stash";
+import { FAMILIES, familiesOf, rainbowKey } from "../../lib/color";
 import { catById, Thumb, Swatches, QtyStepper, Chip, Icon } from "./bits";
 
 const haystack = (it, catName) =>
   [it.name, it.brand, it.fiber, it.location, it.notes, catName, ...(it.tags || []), ...(it.colors || []).flatMap((c) => [c.name, c.hex])]
     .join(" ")
     .toLowerCase();
+
+// Which color families an item belongs to: any strand counts, so a
+// variegated yarn shows up under each of its colors.
+const familySet = (it) => new Set((it.colors || []).flatMap((c) => familiesOf(c.hex)));
+
+// Rainbow position: the strand in the chosen family if there is one, else the
+// primary. Items with no color go last.
+function rainbowOf(it, fam) {
+  const colors = it.colors || [];
+  if (!colors.length) return Infinity;
+  const strand = (fam && colors.find((c) => familiesOf(c.hex).includes(fam))) || colors[0];
+  return rainbowKey(strand.hex);
+}
 
 // The list: search, filters, quick +/−, and the way into everything else.
 export default function Ledger({ items, status, categories, view, setView }) {
@@ -18,19 +32,29 @@ export default function Ledger({ items, status, categories, view, setView }) {
   useEffect(() => {
     if (location.state?.flash) navigate(location.pathname, { replace: true, state: null });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const { q, cat, tag, archived } = view;
+  const { q, cat, tag, fam, sort, archived } = view;
   const set = (patch) => setView((v) => ({ ...v, ...patch }));
 
   const active = items.filter((i) => i.status !== "used_up");
   const usedUp = items.length - active.length;
   const pool = archived ? items.filter((i) => i.status === "used_up") : active;
 
+  const fams = useMemo(() => new Map(items.map((it) => [it.id, familySet(it)])), [items]);
   const inCat = (it) => cat === "all" || it.categoryId === cat;
   const needle = q.trim().toLowerCase();
   const shown = pool
-    .filter((it) => inCat(it) && (!tag || it.tags?.includes(tag)))
+    .filter((it) => inCat(it) && (!tag || it.tags?.includes(tag)) && (!fam || fams.get(it.id)?.has(fam)))
     .filter((it) => !needle || haystack(it, catById(categories, it.categoryId).name).includes(needle))
-    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    .sort(
+      sort === "rainbow"
+        ? (a, b) => rainbowOf(a, fam) - rainbowOf(b, fam)
+        : (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)
+    );
+
+  // Families worth offering: the ones present in the current category.
+  const famCounts = {};
+  for (const it of pool) if (inCat(it)) for (const f of fams.get(it.id) || []) famCounts[f] = (famCounts[f] || 0) + 1;
+  const famChips = FAMILIES.filter((f) => famCounts[f.key]);
 
   // Tags worth offering: the most used ones in the current category.
   const topTags = useMemo(() => {
@@ -73,11 +97,11 @@ export default function Ledger({ items, status, categories, view, setView }) {
       </div>
 
       <div className="sl-chips sl-scroll" role="group" aria-label="Category">
-        <Chip on={cat === "all"} onClick={() => set({ cat: "all", tag: null })}>
+        <Chip on={cat === "all"} onClick={() => set({ cat: "all", tag: null, fam: null })}>
           All <small>{pool.length}</small>
         </Chip>
         {categories.map((c) => (
-          <Chip key={c.id} on={cat === c.id} onClick={() => set({ cat: c.id, tag: null })}>
+          <Chip key={c.id} on={cat === c.id} onClick={() => set({ cat: c.id, tag: null, fam: null })}>
             {c.name} <small>{count(c.id)}</small>
           </Chip>
         ))}
@@ -90,6 +114,31 @@ export default function Ledger({ items, status, categories, view, setView }) {
               #{t}
             </Chip>
           ))}
+        </div>
+      )}
+
+      {famChips.length > 0 && (
+        <div className="sl-chips sl-scroll sl-fams" role="group" aria-label="Color family">
+          {famChips.map((f) => (
+            <Chip key={f.key} on={fam === f.key} onClick={() => set({ fam: fam === f.key ? null : f.key })}>
+              <span className="sl-fam-dot" style={{ background: f.dot }} aria-hidden="true" />
+              {f.label} <small>{famCounts[f.key]}</small>
+            </Chip>
+          ))}
+        </div>
+      )}
+
+      {shown.length > 1 && (
+        <div className="sl-listhead">
+          <span>{shown.length} things</span>
+          <span className="sl-seg sl-seg-sm" role="group" aria-label="Sort">
+            <button type="button" aria-pressed={sort !== "rainbow"} onClick={() => set({ sort: "recent" })}>
+              Newest
+            </button>
+            <button type="button" aria-pressed={sort === "rainbow"} onClick={() => set({ sort: "rainbow" })}>
+              Rainbow
+            </button>
+          </span>
         </div>
       )}
 
@@ -125,7 +174,7 @@ export default function Ledger({ items, status, categories, view, setView }) {
       </ul>
 
       <div className="sl-foot">
-        <button type="button" className="sl-foot-link" onClick={() => set({ archived: !archived, tag: null })}>
+        <button type="button" className="sl-foot-link" onClick={() => set({ archived: !archived, tag: null, fam: null })}>
           <span>{archived ? "Back to the stash" : `Used up · ${usedUp} in the archive`}</span>
           <span aria-hidden="true">→</span>
         </button>

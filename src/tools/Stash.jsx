@@ -13,7 +13,7 @@ import Categories from "./stash/Categories";
 export default function Stash() {
   const { items, status } = useStash();
   const { categories, setCategories } = useStashSettings();
-  const [view, setView] = useState({ q: "", cat: "all", tag: null, archived: false });
+  const [view, setView] = useState({ q: "", cat: "all", tag: null, fam: null, sort: "recent", archived: false });
   const ctx = { items, status, categories };
 
   return (

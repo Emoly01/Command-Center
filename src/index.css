@@ -188,7 +188,11 @@ select.sl-input{width:auto;}
   font-size:13px;cursor:pointer;white-space:nowrap;}
 .sl-chip small{font-family:var(--font-mono);font-size:10.5px;opacity:.75;}
 .sl-chip[aria-pressed="true"]{border-color:var(--ember);background:rgba(255,122,50,.16);color:var(--gold);}
-.sl-tags .sl-chip{min-height:36px;font-size:12.5px;}
+.sl-tags .sl-chip,.sl-fams .sl-chip{min-height:36px;font-size:12.5px;}
+.sl-fam-dot{width:12px;height:12px;border-radius:50%;box-shadow:0 0 0 1px rgba(246,237,229,.3);}
+.sl-listhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 0 10px;
+  font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--smoke);}
+.sl-seg-sm button{min-height:38px;min-width:0;font-size:11px;}
 
 /* Ledger */
 .sl-searchrow{display:flex;gap:8px;margin-bottom:12px;}
