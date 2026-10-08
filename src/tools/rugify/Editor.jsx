@@ -4,7 +4,7 @@ import ToolFrame from "../../ToolFrame";
 import Cropper from "./Cropper";
 import YarnPicker from "./YarnPicker";
 import Estimate from "./Estimate";
-import { useRugResult, tuftingPalette } from "./useResult";
+import { useRugResult, tuftingPalette, candidatesFor } from "./useResult";
 import { exportPng, exportSvg, previewThumb } from "./exportFiles";
 import { buildSvg } from "../../lib/rugify/render";
 import { lockedFromResult } from "../../lib/rugify/lock";
@@ -18,6 +18,72 @@ const clampNum = (v, lo, hi, fallback) => {
   const n = Number(String(v).replace(",", "."));
   return Number.isFinite(n) && n > 0 ? Math.min(hi, Math.max(lo, n)) : fallback;
 };
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+// Every yarn the stash has a colour for, any category.
+const allYarn = (items) => items.filter((i) => i.status !== "used_up" && i.colors?.length);
+
+// A one-colour rug is never what anyone wants. Say why, and offer the fix.
+function OneColorHint({ project, items, result, onPalette }) {
+  const cands = candidatesFor(project, items);
+  const palette = project.palette || {};
+  const max = palette.maxColors || 5;
+  const all = allYarn(items);
+  const useAll = () =>
+    onPalette({
+      ...palette,
+      allowed: all.map((i) => i.id),
+      mode: "auto",
+      maxColors: Math.max(max, 5),
+      snapshot: Object.fromEntries(all.map((i) => [i.id, { name: i.name, hex: i.colors[0].hex }])),
+      autoFill: false,
+    });
+
+  if (cands.length <= 1) {
+    return (
+      <div className="rg-warn rg-warn-act">
+        <p>
+          {cands.length
+            ? `Only one yarn to choose from, so the whole rug comes out ${cands[0].name}. That's a bath mat, not a pattern.`
+            : "No yarn ticked, so there's nothing to make a pattern from."}{" "}
+          {all.length > 1
+            ? `You have ${all.length} yarns with a colour in the stash (crochet yarn included).`
+            : "Log some more yarn in the Stash Ledger first."}
+        </p>
+        <div className="rg-row">
+          {all.length > 1 && (
+            <button type="button" className="sl-pill sl-pill-hot" onClick={useAll}>
+              Use all my yarn, best {Math.max(max, 5)}
+            </button>
+          )}
+          <Link to="/stash/new" className="sl-pill">Log yarn</Link>
+        </div>
+      </div>
+    );
+  }
+  if (max === 1) {
+    return (
+      <div className="rg-warn rg-warn-act">
+        <p>The maximum is set to 1 colour, so that's all you get. Raise it and I'll pick the best of your {cands.length} yarns.</p>
+        <div className="rg-row">
+          <button type="button" className="sl-pill sl-pill-hot" onClick={() => onPalette({ ...palette, maxColors: Math.min(5, cands.length) })}>
+            Raise to {Math.min(5, cands.length)}
+          </button>
+        </div>
+      </div>
+    );
+  }
+  if (result?.legend.length === 1) {
+    return (
+      <p className="rg-warn">
+        Everything landed on {result.legend[0].name}. Your other ticked yarns are too far from this photo's colours, or the
+        minimum detail swallowed the rest. Try more yarn, or a smaller minimum detail.
+      </p>
+    );
+  }
+  return null;
+}
+
 const fmtDate = (ms) => new Date(ms).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 
 export default function Editor({ rugs, status, ...rest }) {
@@ -241,11 +307,12 @@ function EditorInner({ rug, status, items, settings, setSettings }) {
               </label>
             )}
           </div>
+          {!locked && <OneColorHint project={project} items={items} result={gen === "ready" ? result : null} onPalette={(palette) => change({ palette })} />}
           <div className="rg-stage" data-view={view} data-busy={gen === "working"} aria-busy={gen === "working"}>
             {svg ? <div className="rg-svg" dangerouslySetInnerHTML={{ __html: svg }} /> : <p className="sl-hint">{error || "Rug-ifying…"}</p>}
           </div>
           <p className="sl-hint" aria-live="polite">
-            {gen === "working" ? "Rug-ifying…" : error ? error : note || (result ? `${result.traced.regions.length} regions, ${result.legend.length} yarns, every one tuftable.` : "")}
+            {gen === "working" ? "Rug-ifying…" : error ? error : note || (result ? `${plural(result.traced.regions.length, "region")}, ${plural(result.legend.length, "yarn")}, every one tuftable.` : "")}
           </p>
 
           {result && (

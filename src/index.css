@@ -378,6 +378,8 @@ select.sl-input{width:auto;}
 .rg-warn{margin:0;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,138,69,.45);
   background:rgba(255,122,50,.1);font-size:13.5px;line-height:1.5;color:#f6d8c2;}
 
+.rg-warn-act{display:flex;flex-direction:column;gap:10px;}
+.rg-warn-act p{margin:0;}
 .rg-crop{display:flex;flex-direction:column;gap:8px;}
 .rg-crop-frame{position:relative;width:100%;max-height:60vh;overflow:hidden;border-radius:12px;background:var(--ash);
   border:1px solid var(--ember);touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;}

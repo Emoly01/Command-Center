@@ -7,7 +7,8 @@ import { gridFromLocked } from "../../lib/rugify/lock";
 const MAX_PIXELS = 4_000_000; // what we draw for the worker, at most
 
 // Default palette for a new rug: every active tufting yarn with a colour,
-// best 5. If the stash hasn't loaded yet, autoFill asks the editor to fill
+// best 5. The 5 is not capped at how many you own today, so ticking more
+// yarn later just works. If the stash hasn't loaded yet, autoFill asks the editor to fill
 // it in once it has (unless you've touched the yarns by then).
 export function tuftingPalette(items) {
   const tufting = items
@@ -15,7 +16,7 @@ export function tuftingPalette(items) {
     .sort((a, b) => a.name.localeCompare(b.name));
   return {
     allowed: tufting.map((i) => i.id),
-    maxColors: Math.max(1, Math.min(5, tufting.length || 5)),
+    maxColors: 5,
     mode: "auto",
     snapshot: Object.fromEntries(tufting.map((i) => [i.id, { name: i.name, hex: i.colors[0].hex }])),
     autoFill: tufting.length === 0,
